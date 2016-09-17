@@ -1,0 +1,61 @@
+	Operators
+
+DOT		: .
+ASSIGN	  	: =
+RSH_ASSIGN	: >>=
+LSH_ASSIGN	: <<=
+AND_ASSIGN	: &=
+OR_ASSIGN	: |=
+XOR_ASSIGN	: ^=
+SUB_ASSIGN	: -=
+ADD_ASSIGN	: +=
+MUL_ASSIGN	: *=
+DIV_ASSIGN	: /=
+MOD_ASSIGN	: %=
+
+LE		: <=
+GE		: >=
+RSH		: >>
+LSH		: <<
+LOGI_AND	: &&
+LOGI_OR		: ||
+INC		: ++
+DEC		: --
+EQ		: ==
+NEQ		: !=
+
+NOT		: !
+AND		: &
+OR		: |
+SUB		: -
+ADD		: +
+MUL		: *
+DIV		: /
+MOD		: %
+XOR		: ^
+LT		: <
+GT		: >
+
+	Other
+
+COMMA		: ,
+COLON		: :
+OPEN_PAREN	: (
+CLOSE_PAREN	: )
+OPEN_BRACKET	: {
+CLOSE_BRACKET	: }
+
+TODO: Literal regex
+
+TODO: identifier regex
+
+	Keywords
+IF		: if
+WHILE		: while
+FOR		: for
+SWITCH		: switch
+CASE		: case
+DEFAULT		: default
+ENUM		: enum
+CLASS		: class
+RETURN		: return
