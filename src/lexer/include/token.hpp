@@ -58,6 +58,8 @@ enum Token {
   TOK_ENUM,
   TOK_CLASS,
   TOK_RETURN,
+
+  TOK_EOF
 };
 
 #endif
