@@ -37,6 +37,9 @@ enum Token {
   TOK_LT,
   TOK_GT,
 
+  TOK_WHITESPACE, //
+  TOK_COMMENT, //
+  
   TOK_COMMA,
   TOK_COLON,
   TOK_OPEN_PAREN,
@@ -45,6 +48,7 @@ enum Token {
   TOK_CLOSE_BRACKET,
 
   TOK_STR_LIT,
+  TOK_CHAR_LIT,
   TOK_NUM_LIT,
 
   TOK_IDENTIFIER,
