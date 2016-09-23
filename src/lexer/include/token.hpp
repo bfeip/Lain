@@ -37,8 +37,8 @@ enum Token {
   TOK_LT,
   TOK_GT,
 
-  TOK_WHITESPACE, //
-  TOK_COMMENT, //
+  TOK_WHITESPACE,
+  TOK_COMMENT,
   
   TOK_COMMA,
   TOK_COLON,

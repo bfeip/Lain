@@ -1,41 +1,120 @@
 #include "lexer.hpp"
-// <cctype> is needed
 
-char lexer::pop() {
-  return src.get();
+char Lexer::pop() {
+  char ret = src.get();
+  if(ret == '\n') {
+    line++;
+    col = 1;
+  }
+  else {
+    col++;
+  }
+  return ret;
 }
 
-char lexer::peek() {
+char Lexer::peek() {
   return src.peek();
 }
 
-std::string lexer::consume(bool strlit) {
+std::string Lexer::consumeLineComment() {
   std::string ret = "";
-  char c;
-  if(strlit) {
-    bool includeQuote = false;
-    c = pop();
-    while(c != EOF && (c != '\"' || includeQuote)) {
-	ret += c;
-	if(c == '\\' && peek() == '\"') {
-	  includeQuote = true;
-	}
-	c = pop();
-    }
-    pop(); // remove end quote
+  while(peek() != EOF && peek() != '\n') {
+    ret += pop();
   }
-  else {
-    c = peek(); // to stop from consuming whitespace
-    while(c != EOF && isalpha(c)) {
-      ret += c;
-      pop(); // remove character that was added to ret
-      c = peek();
+  if(peek() != EOF) {
+    pop();
+  }
+  return ret;
+}
+
+std::string Lexer::consumeBlockComment() {
+  std::string ret = "";
+  while(peek() != EOF) {
+    if(peek() == '*') {
+      pop();
+      if(peek() == '/') {
+	return ret;
+      }
+      ret += '*';
+    }
+    else {
+      ret += pop();
     }
   }
   return ret;
 }
 
-Symbol next() {
+std::string Lexer::consumeStrLit() {
+  std::string ret = "";
+  while(peek() != EOF) {
+    if(peek() == '\\') {
+      ret += pop();
+      if(peek() == '\"') {
+	ret += '\"';
+	pop();
+      }
+    }
+    else if(peek() == '\"') {
+      pop();
+      return ret;
+    }
+    else {
+      ret += pop();
+    }
+  }
+  return ret;
+}
+
+std::string Lexer::consumeCharLit() {
+  std::string ret = "";
+  while(peek() != EOF) {
+    if(peek() == '\\') {
+      ret += pop();
+      if(peek() == '\'') {
+	ret += '\'';
+	pop();
+      }
+    }
+    else if(peek() == '\'') {
+      pop();
+      return ret;
+    }
+    else {
+      ret += pop();
+    }
+  }
+  return ret;
+}
+
+std::string Lexer::consumeNumLit() {
+  std::string ret = "";
+  char c;
+  while((c = peek()) != EOF) {
+    if(!isdigit(c) && c != '.') {
+      return ret;
+    }
+    else {
+      ret += pop();
+    }
+  }
+  return ret;
+}
+
+std::string Lexer::consumeIdentifier() {
+  std::string ret = "";
+  char c;
+  while((c = peek()) != EOF) {
+    if(!isalnum(c)) {
+      return ret;
+    }
+    else {
+      ret += pop();
+    }
+  }
+  return ret;
+}
+
+Symbol Lexer::next() {
   Symbol sym;
   char c = peek();
   switch(c) {
@@ -132,7 +211,7 @@ Symbol next() {
   case '^':
     sym.setPos(line, col);
     pop();
-    if(peek() = '=') {
+    if(peek() == '=') {
       sym.setToken(TOK_XOR_ASSIGN);
       pop();
     }
@@ -143,11 +222,11 @@ Symbol next() {
   case '-':
     sym.setPos(line, col);
     pop();
-    if(peek() = '-') {
+    if(peek() == '-') {
       sym.setToken(TOK_DEC);
       pop();
     }
-    else if(peek() = '=') {
+    else if(peek() == '=') {
       sym.setToken(TOK_SUB_ASSIGN);
       pop();
     }
@@ -158,11 +237,11 @@ Symbol next() {
   case '+':
     sym.setPos(line, col);
     pop();
-    if(peek() = '+') {
+    if(peek() == '+') {
       sym.setToken(TOK_INC);
       pop();
     }
-    else if(peek() = '=') {
+    else if(peek() == '=') {
       sym.setToken(TOK_ADD_ASSIGN);
       pop();
     }
@@ -193,14 +272,14 @@ Symbol next() {
       pop();
       std::string com = consumeLineComment();
       std::unique_ptr<SymbolData> dat(new SymbolData(com));
-      sym.setSymbolData(dat);
+      sym.setSymbolData(std::move(dat));
     }
     else if(peek() == '*') {
       sym.setToken(TOK_COMMENT);
       pop();
       std::string com = consumeBlockComment();
       std::unique_ptr<SymbolData> dat(new SymbolData(com));
-      sym.setSymbolData(dat);
+      sym.setSymbolData(std::move(dat));
     }
     else {
       sym.setToken(TOK_DIV);
@@ -221,7 +300,7 @@ Symbol next() {
     sym.setPos(line, col);
     pop();
     if(peek() == '=') {
-      sym.setToken(TOK_NE);
+      sym.setToken(TOK_NEQ);
       pop();
     }
     else {
@@ -254,65 +333,70 @@ Symbol next() {
     break;
   case '\"':
     sym.setAll(TOK_STR_LIT, line, col);
-    std::string str = consumeStrLit();
-    std::unique_ptr<SymbolData> dat(new SymbolData(str));
-    sym.setSymbolData(dat);
+    {
+      std::string str = consumeStrLit();
+      std::unique_ptr<SymbolData> dat(new SymbolData(str));
+      sym.setSymbolData(std::move(dat));
+    }
     break;
   case '\'':
     sym.setAll(TOK_CHAR_LIT, line, col);
-    std::string chr= consumeCharLit();
-    std::unique_ptr<SymbolData> dat(new SymbolData(chr));
-    sym.setSymbolData(dat);
+    {
+      std::string chr= consumeCharLit();
+      std::unique_ptr<SymbolData> dat(new SymbolData(chr));
+      sym.setSymbolData(std::move(dat));
+    }
     break;
-  }
-  if(isspace(c)) {
-    sym.setAll(TOK_WHITESPACE, line, col)
-    pop();
-    while(isspace(peek())) {
+  default:
+    if(isspace(c)) {
+      sym.setAll(TOK_WHITESPACE, line, col);
       pop();
+      while(isspace(peek())) {
+	pop();
+      }
+    }
+    else if(isdigit(c)) {
+      sym.setAll(TOK_NUM_LIT, line, col);
+      std::string num = consumeNumLit();
+      std::unique_ptr<SymbolData> dat(new SymbolData(num));
+      sym.setSymbolData(std::move(dat));
+    }
+    else if(isalpha(c)) {
+      sym.setPos(line, col);
+      std::string id = consumeIdentifier();
+      if(id == "if") {
+	sym.setToken(TOK_IF);
+      }
+      else if(id == "while") {
+	sym.setToken(TOK_WHILE);
+      }
+      else if(id == "for") {
+	sym.setToken(TOK_FOR);
+      }
+      else if(id == "switch") {
+	sym.setToken(TOK_SWITCH);
+      }
+      else if(id == "case") {
+	sym.setToken(TOK_CASE);
+      }
+      else if(id == "default") {
+	sym.setToken(TOK_DEFAULT);
+      }
+      else if(id == "enum") {
+	sym.setToken(TOK_ENUM);
+      }
+      else if(id == "class") {
+	sym.setToken(TOK_CLASS);
+      }
+      else if(id == "return") {
+	sym.setToken(TOK_RETURN);
+      }
+      else {
+	sym.setToken(TOK_IDENTIFIER);
+	std::unique_ptr<SymbolData> dat(new SymbolData(id));
+	sym.setSymbolData(std::move(dat));
+      }
     }
   }
-  else if(isdigit(c)) {
-    sym.setAll(TOK_NUM_LIT, line, col);
-    std::string num = consumeNumLit();
-    std::unique_ptr<SymbolData> dat(new SymbolData(num));
-    sym.setSymbolData(dat);
-  }
-  else if(isalpha(c)) {
-    sym.setPos(line, col);
-    std::string id = consumeIdentifier();
-    switch(id) {
-    case "if":
-      sym.setToken(TOK_IF);
-      break;
-    case "while":
-      sym.setToken(TOK_WHILE);
-      break;
-    case "for":
-      sym.setToken(TOK_FOR);
-      break;
-    case "switch":
-      sym.setToken(TOK_SWITCH);
-      break;
-    case "case":
-      sym.setToken(TOK_CASE);
-      break;
-    case "default":
-      sym.setToken(TOK_DEFAULT);
-      break;
-    case "enum":
-      sym.setToken(TOK_ENUM);
-      break;
-    case "class":
-      sym.setToken(TOK_CLASS);
-      break;
-    case "return":
-      sym.setToken(TOK_RETURN);
-      break;
-    default:
-      sym.setToken(TOK_IDENTIFIER);
-      std::unique_ptr<SymbolData> dat(new SymbolData(id));
-      sym.setSymbolData(dat);
-      break;
-    }
-  }
+  return sym;
+}

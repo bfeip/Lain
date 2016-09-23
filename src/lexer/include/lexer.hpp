@@ -1,6 +1,9 @@
 #ifndef LEXER_HPP
 #define LEXER_HPP
 
+#include "lexer_shared.hpp"
+#include "symbol.hpp"
+
 class Lexer {
 private:
   std::ifstream& src;
@@ -10,9 +13,14 @@ private:
   char pop();
   char peek();
   
-  std::string consume(bool strlit); // if strlit, eat end quote too
+  std::string consumeLineComment();
+  std::string consumeBlockComment();
+  std::string consumeStrLit();
+  std::string consumeCharLit();
+  std::string consumeNumLit();
+  std::string consumeIdentifier();
 public:
-  lexer(std::ifstream& src) : src(src), line(1), col(1) {}
+  Lexer(std::ifstream& src) : src(src), line(1), col(1) {}
   Symbol next();
 };
 
