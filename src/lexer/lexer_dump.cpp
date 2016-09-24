@@ -1,27 +1,29 @@
 #include "lexer.hpp"
+#include <iostream>
 
 int main(int argc, char** argv) {
   if(argc != 2) {
-    cout << "Needs an input file\n";
+    std::cout << "Needs an input file\n";
     return 1;
   }
   std::ifstream in;
-  in.open(argv[2]);
+  in.open(argv[1]);
   if(!in) {
-    cout << "Failed to open the input file for reading\n";
+    std::cout << "Failed to open the input file for reading\n";
     return 2;
   }
   
   Lexer lex(in);
-  Symbol sym = sym.next();
+  Symbol sym = lex.next();
   const SymbolData* dat;
   while(sym.getToken() != TOK_EOF) {
-    cout << sym.getLine() << ':' << sym.getCol() << '\t';
-    cout << sym.getToken();
+    std::cout << sym.getLine() << ':' << sym.getCol() << '\t';
+    std::cout << sym.getToken();
     if(dat = sym.getSymbolData()) {
-      cout << '\t' << *dat.getAsString();
+      std::cout << '\t' << *dat->getAsString();
     }
-    cout << endl;
+    std::cout << std::endl;
+    sym = lex.next();
   }
 
   return 0;

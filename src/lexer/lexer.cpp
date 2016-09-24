@@ -315,6 +315,10 @@ Symbol Lexer::next() {
     sym.setAll(TOK_COLON, line, col);
     pop();
     break;
+  case ';':
+    sym.setAll(TOK_SEMICOLON, line, col);
+    pop();
+    break;
   case '(':
     sym.setAll(TOK_OPEN_PAREN, line, col);
     pop();
@@ -333,6 +337,7 @@ Symbol Lexer::next() {
     break;
   case '\"':
     sym.setAll(TOK_STR_LIT, line, col);
+    pop();
     {
       std::string str = consumeStrLit();
       std::unique_ptr<SymbolData> dat(new SymbolData(str));
@@ -341,6 +346,7 @@ Symbol Lexer::next() {
     break;
   case '\'':
     sym.setAll(TOK_CHAR_LIT, line, col);
+    pop();
     {
       std::string chr= consumeCharLit();
       std::unique_ptr<SymbolData> dat(new SymbolData(chr));
@@ -367,6 +373,9 @@ Symbol Lexer::next() {
       if(id == "if") {
 	sym.setToken(TOK_IF);
       }
+      else if(id == "else") {
+	sym.setToken(TOK_ELSE);
+      }
       else if(id == "while") {
 	sym.setToken(TOK_WHILE);
       }
@@ -381,6 +390,12 @@ Symbol Lexer::next() {
       }
       else if(id == "default") {
 	sym.setToken(TOK_DEFAULT);
+      }
+      else if(id == "break") {
+	sym.setToken(TOK_BREAK);
+      }
+      else if(id == "continue") {
+	sym.setToken(TOK_CONTINUE);
       }
       else if(id == "enum") {
 	sym.setToken(TOK_ENUM);
