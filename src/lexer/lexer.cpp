@@ -12,7 +12,7 @@ char Lexer::pop() {
   return ret;
 }
 
-char Lexer::peek() {
+char Lexer::peek() const {
   return src.peek();
 }
 

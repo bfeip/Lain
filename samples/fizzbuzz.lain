@@ -1,0 +1,17 @@
+int main() {
+  for(int i=0;i<1000;i++) {
+    if(i % 3 && i % 5) {
+      print("fizzbuzz");
+    }
+    else if(i % 3) {
+      print("fizz");
+    }
+    else if(i % 5) {
+      print("buzz");
+    }
+    else {
+      print(i);
+    }
+  }
+  return 0;
+}

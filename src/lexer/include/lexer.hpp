@@ -11,7 +11,7 @@ private:
   int col;
 
   char pop();
-  char peek();
+  char peek() const;
   
   std::string consumeLineComment();
   std::string consumeBlockComment();
