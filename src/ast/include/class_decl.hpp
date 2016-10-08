@@ -9,22 +9,35 @@
 class ClassDecl : public TypeDecl {
 private:
   std::unique_ptr<CompoundStmt> body;
-  std::vector<MemberVarDecl> memberVars;
-  std::vector<MethodDecl> methods;
+  
+  std::unordered_map<std::unique_ptr<MemberVarDecl>, AccessModifier> memberVars;
+  std::unordered_map<std::unique_ptr<MethodDecl>, AccessModifier> methods;
+  
+  std::unordered_map<ClassDecl*, AccessModifier> parents;
+  std::unordered_map<ClassDecl*, AccessModifier> children;
+  
+  std::unordered_map<TypeDecl*, AccessModifier> containedTypes;
 public:
   ClassDecl() : TypeDecl(), body(nullptr) {}
   
   bool isDefined() const { return body != nullptr; }
   const CompoundStmt* getBody() const { return body.get() }
-  void setBody(std::unique_ptr<CompundStmt> body) { this->body = body; }
+  void setBody(std::unique_ptr<CompundStmt> body) { this->body = body; setResolved(); }
 
-  const std::vector<MemberVarDecl>& getMembers() const { return members; }
-  void addMember(const MemberVarDecl& decl) { memberVars.push_back(decl); }
-  void setMembers(const std::vector<MemberVarDecl>& decls) { memberVars = decls; }
+  const std::pair<const MemberVarDecl*, AccessModifier>& findMember(const std::string& name) const;
+  void addMember(const MemberVarDecl& decl, AccessModifier am) { memberVars.insert(decl, am); }
 
-  const std::vector<MemberVarDecl>& getMethods() const { return methods; }
+  const std::pair<const MethodDecl*, AccessModifier>& findMethod(const std::string& name) const;
   void addMethod(const MethodDecl& decl) { methods.push_back(decl); }
-  void setMethods(const std::vector<MethodDecl>& decls) { methods = decls; }
+
+  const std::pair<const ClassDecl*, AccessModifer>& findParent(const std::string& name) const;
+  void addParent(const ClassDecl* par, AccessModifier am) { parents.insert(par, am); }
+
+  const std::pair<const ClassDecl*, AccessModifer>& findChild(const std::string& name) const;
+  void addChild(const ClassDecl* child, AccessModifier am) { children.insert(child, am); }
+
+  const std::pair<const TypeDecl*, AccessModifier>& findContainedType(const std::string& name) const;
+  void addContainedType(const TypeDecl* type, AccessModifier am) { containedTypes.insert(type, am); }
 };
 
 #endif
