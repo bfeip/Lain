@@ -10,6 +10,8 @@ public:
   TypeDecl() : type(new type()) {}
   
   void setName(const std::string& name) { this->name = name; type->setName(name); }
+
+  Type* getType() { return type.get(); }
 };
 
 #endif

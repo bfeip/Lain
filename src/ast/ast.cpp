@@ -1,27 +1,82 @@
 #include "include/ast.hpp"
 
-void AST::addTopLevelDecl(std::unique_ptr<Decl> decl) {
-  decls.push_back(std::move(decl));
+void AST::proccessDecl(std::unique_ptr<Decl> decl) {
+  if(!decl) {
+    ast.storeError("attempt to add null decl");
+    return;
+  }
+  
+  if(TypeDecl* td = dynamic_cast<TypeDecl>(decl.get())) {
+    Type* t = td->getType();
+    if(!t) {
+      ast.error("TypeDecl contained null type");
+      return;
+    }
+    types.pushType(t);
+  }
+
+  if(FunctionDecl* fd = dynamic_cast<FunctionDecl>(decl.get())) {
+    types.pushFunction();
+  }
+
+  if(curDecl) {
+    decl->setOwner(curDecl);
+    curDecl->setOwned(std::move(decl));
+  }
+  else {
+    topDecls.emplace_back(decl);
+  }
+  curDecl = decl;
+
   return;
 }
 
-void AST::addTopLevelType(std::unique_ptr<Type> type) {
-  types.push_back(std::move(type));
-  return;
+void AST::endDecl() {
+  curdecl = curdecl->getOwner();
 }
 
-std::vector<Decl*> AST::getTopLevelDecls() const {
-  std::vector<Decl*> ret;
-  for(auto& e : decls) {
-    ret.push_back(e.get());
+Decl* AST::findDecl(const std::string& name) {
+  if(!curDecl) {
+    for(Decl* e : topDecls) {
+      if(e->getName() == name) {
+	return e;
+      }
+    }
   }
-  return ret;
+  
+  if(name == curDecl->getName()) {
+    return curDecl;
+  }
+  
+  Decl* above = curDecl->getOwner();
+  while(above) {
+    if(above->getName == name) {
+      return above;
+    }
+    above = above->getOwner();
+  }
+  
+  if(FunctionDecl* fd = dynamic_cast<FunctionDecl>(curDecl)) {
+    std::vector<Decl*> below = fd->getOwned();
+    for(Decl*& e : below) {
+      if(e->getName() == name) {
+	return e;
+      }
+    }
+  }
+  
+  if(ClassDecl* cd = dynamic_cast<ClassDecl>(curDecl)) {
+    std::vector<Decl*> below = cd->getOwned();
+    for(Decl* e : below) {
+      if(e->getName() == name) {
+	return e;
+      }
+    }
+  }
+
+  return nullptr;
 }
 
-std::vector<Type*> AST::getTopLevelTypes() const {
-  std::vector<Type*> ret;
-  for(auto& e : types) {
-    ret.push_back(e.get());
-  }
-  return ret;
+Type* AST::findType(const std::string& name) {
+  return types.findType(name);
 }

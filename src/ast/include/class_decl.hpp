@@ -16,7 +16,8 @@ private:
   std::unordered_map<ClassDecl*, AccessModifier> parents;
   std::unordered_map<ClassDecl*, AccessModifier> children;
   
-  std::unordered_map<TypeDecl*, AccessModifier> containedTypes;
+  std::unordered_map<std::unique_ptr<TypeDecl>, AccessModifier> ownedTypes;
+  std::pair<Decl*, AccessModifer> owner;
 public:
   ClassDecl() : TypeDecl(), body(nullptr) {}
   

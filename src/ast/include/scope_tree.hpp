@@ -18,9 +18,9 @@ public:
   void pushType(Type* t);
   void pushFunction();
 
-  Type* getType(const std::string& name); // resolves namespaces i.e. this::is::a::type
+  Type* findType(const std::string& name); // resolves namespaces i.e. this::is::a::type
 
-  void move(const std::string& name);
+  void move(const std::string& name); // move cur to type matching name
   void up() { cur = cur ? cur->parent : nullptr; }
 };
 

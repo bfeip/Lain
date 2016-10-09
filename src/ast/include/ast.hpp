@@ -10,18 +10,18 @@ private:
   std::vector<std::unique_ptr<Decl>> topDecls;
   ScopeTree types; /* tree of TU types, a node can only "see" its immediate children, its siblings,
 		    * any of its parent nodes, or any top level node */
-  std::iterator curDecl; // keeps track of which (lowest level) decl is being defined/declared 
+  Decl* curDecl;
 public:
-  AST() = curDecl(topDecls.begin());
+  AST() = default;
 
-  void addTopDecl(std::unique_ptr<Decl> decl);
+  void proccessDecl(std::unique_ptr<Decl> decl);
   void endDecl();
 
   /* Types are added when a TypeDecl (or function, because functions create a type scope)
    * is pushed */
 
-  Decl* findDecl(const std::string& name, const Decl* scope);
-  Type* findType(const std::string& name, const Decl* scope);
+  Decl* findDecl(const std::string& name); // curDecl is used as scope
+  Type* findType(const std::string& name);
 
   void resolvePendingTypes();
 };

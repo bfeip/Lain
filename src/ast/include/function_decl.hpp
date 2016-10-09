@@ -11,6 +11,9 @@ private:
   QualType returnType;
   std::vector<VarDecl> params;
   std::unique_ptr<CompoundStmt> body;
+  
+  Decl* owner;
+  std::vector<std::unique_ptr<Decl>> owned;
 public:
   FunctionDecl() : Decl(), body(nullptr) {}
   bool isDefined() const { return body != nullptr; }
@@ -24,6 +27,12 @@ public:
   
   const CompoundStmt* getBody() const { return body.get(); }
   void setBody(std::unique_ptr<CompoundStmt> body) { this->body = body; }
+
+  Decl* getOwner() { return owner; }
+  void setOwner(Decl* owner) { this->owner = owner; }
+
+  std::vector<Decl*> getOwned() { return owned; }
+  void addOwned(Decl* d) { owned.push_back(d); }
 };
 
 #endif
