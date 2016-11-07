@@ -6,33 +6,29 @@
 #include "var_decl.hpp"
 #include "compound_stmt.hpp"
 
-class FunctionDecl : public Decl {
+class FunctionDecl : virtual public Decl {
 private:
-  QualType returnType;
-  std::vector<VarDecl> params;
+  std::unique_ptr<QualType> returnType;
+  std::vector<std::unique_ptr<VarDecl>> params;
   std::unique_ptr<CompoundStmt> body;
-  
-  Decl* owner;
-  std::vector<std::unique_ptr<Decl>> owned;
 public:
-  FunctionDecl() : Decl(), body(nullptr) {}
+  FunctionDecl() = delete;
+  FunctionDecl(ScopeCreator* sc) : Decl(sc) {}
+  virtual ~FunctionDecl() = default;
+  
   bool isDefined() const { return body != nullptr; }
   
-  const QualType& getReturnType() const { return returnType; }
-  void setReturnType(const QualType& returnType) { this->returnType = returnType; }
+  QualType* getReturnType() { return returnType.get(); }
+  const QualType* getReturnType() const { return returnType.get(); }
+  void setReturnType(std::unique_ptr<QualType> qt) { returnType = std::move(qt); }
 
-  const std::vector<VarDecl>& getParams() const { return params; }
-  void setParams(const std::vector<VarDecl>& params) { this->params = params; }
-  void addParam(const VarDecl& param) { params.push_back(param); }
+  const std::vector<VarDecl*>& getParams();
+  const std::vector<const VarDecl*>& getParams() const;
+  void addParam(std::unique_ptr<VarDecl> param) { params.emplace_back(std::move(param)); }
   
+  CompoundStmt* getBody() { return body.get(); }
   const CompoundStmt* getBody() const { return body.get(); }
-  void setBody(std::unique_ptr<CompoundStmt> body) { this->body = body; }
-
-  Decl* getOwner() { return owner; }
-  void setOwner(Decl* owner) { this->owner = owner; }
-
-  std::vector<Decl*> getOwned() { return owned; }
-  void addOwned(Decl* d) { owned.push_back(d); }
+  void setBody(std::unique_ptr<CompoundStmt> cs) { body = std::move(body); }
 };
 
 #endif

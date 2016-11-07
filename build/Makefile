@@ -111,6 +111,19 @@ depend:
 .PHONY : depend
 
 #=============================================================================
+# Target rules for targets named Parser
+
+# Build rule for target.
+Parser: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 Parser
+.PHONY : Parser
+
+# fast build rule for target.
+Parser/fast:
+	$(MAKE) -f CMakeFiles/Parser.dir/build.make CMakeFiles/Parser.dir/build
+.PHONY : Parser/fast
+
+#=============================================================================
 # Target rules for targets named Lexer
 
 # Build rule for target.
@@ -177,6 +190,33 @@ src/lexer/lexer_dump.cpp.s:
 	$(MAKE) -f CMakeFiles/Lexer.dir/build.make CMakeFiles/Lexer.dir/src/lexer/lexer_dump.cpp.s
 .PHONY : src/lexer/lexer_dump.cpp.s
 
+src/parser/parser.o: src/parser/parser.cpp.o
+
+.PHONY : src/parser/parser.o
+
+# target to build an object file
+src/parser/parser.cpp.o:
+	$(MAKE) -f CMakeFiles/Parser.dir/build.make CMakeFiles/Parser.dir/src/parser/parser.cpp.o
+.PHONY : src/parser/parser.cpp.o
+
+src/parser/parser.i: src/parser/parser.cpp.i
+
+.PHONY : src/parser/parser.i
+
+# target to preprocess a source file
+src/parser/parser.cpp.i:
+	$(MAKE) -f CMakeFiles/Parser.dir/build.make CMakeFiles/Parser.dir/src/parser/parser.cpp.i
+.PHONY : src/parser/parser.cpp.i
+
+src/parser/parser.s: src/parser/parser.cpp.s
+
+.PHONY : src/parser/parser.s
+
+# target to generate assembly for a file
+src/parser/parser.cpp.s:
+	$(MAKE) -f CMakeFiles/Parser.dir/build.make CMakeFiles/Parser.dir/src/parser/parser.cpp.s
+.PHONY : src/parser/parser.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -184,6 +224,7 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... edit_cache"
+	@echo "... Parser"
 	@echo "... rebuild_cache"
 	@echo "... Lexer"
 	@echo "... src/lexer/lexer.o"
@@ -192,6 +233,9 @@ help:
 	@echo "... src/lexer/lexer_dump.o"
 	@echo "... src/lexer/lexer_dump.i"
 	@echo "... src/lexer/lexer_dump.s"
+	@echo "... src/parser/parser.o"
+	@echo "... src/parser/parser.i"
+	@echo "... src/parser/parser.s"
 .PHONY : help
 
 

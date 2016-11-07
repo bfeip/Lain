@@ -335,6 +335,14 @@ Symbol Lexer::next() {
     sym.setAll(TOK_CLOSE_BRACKET, line, col);
     pop();
     break;
+  case '[':
+    sym.setAll(TOK_OPEN_SQUARE_BRACKET, line, col);
+    pop();
+    break;
+  case ']':
+    sym.setAll(TOK_CLOSE_SQUARE_BRACKET, line, col);
+    pop();
+    break;
   case '\"':
     sym.setAll(TOK_STR_LIT, line, col);
     pop();
@@ -402,6 +410,24 @@ Symbol Lexer::next() {
       }
       else if(id == "class") {
 	sym.setToken(TOK_CLASS);
+      }
+      else if(id == "typedef") {
+	sym.setToken(TOK_TYPEDEF);
+      }
+      else if(id == "public") {
+	sym.setToken(TOK_PUBLIC);
+      }
+      else if(id == "protected") {
+	sym.setToken(TOK_PROTECTED);
+      }
+      else if(id == "private") {
+	sym.setToken(TOK_PRIVATE);
+      }
+      else if(id == "static") {
+	sym.setToken(TOK_STATIC);
+      }
+      else if(id == "const") {
+	sym.setToken(TOK_CONST);
       }
       else if(id == "return") {
 	sym.setToken(TOK_RETURN);

@@ -6,13 +6,17 @@
 
 class QualType {
 private:
-  Type type;
+  Type* type;
   // [const, static]
   std::vector<bool> typeBits;
 public:
-  QualType() : typeBits(2) {}
-  type getType() { return type; }
-  void setType(const Type& type) { this->type = type; }
+  QualType() = delete;
+  QualType(Type* t) : type(t), typeBits(2) {}
+  virtual ~QualType() = default;
+  
+  Type* getType() { return type; }
+  const Type* getType() const { return type; }
+  void setType(Type* t) { type = t; }
   
   bool getConst() const { return typeBits[0]; }
   bool getStatic() const { return typeBits[1]; }

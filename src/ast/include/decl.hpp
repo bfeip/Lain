@@ -2,22 +2,26 @@
 #define DECL_HPP
 
 #include "ast_shared.hpp"
+#include "ast_node.hpp"
+#include "scope_creator.hpp"
 
-class Decl {
-private:
-  bool broken;
-  std::string name;
-  Decl* owner;
-public:
-  Decl() : broken(false), name("") {}
-  bool isBroken() const { return broken; }
-  void setBroken() { broken = true; }
+class Decl : virtual public AstNode {
+protected:
+  std::unique_ptr<std::string> name;
   
-  const std::string& getName() const { return name; }
-  void setName(const std::string& name) { this->name = name; }
+  ScopeCreator* owner;
+public:
+  Decl() = delete;
+  Decl(ScopeCreator* sc) : owner(sc) {}
+  virtual ~Decl() = default;
+  
+  std::string* getName() { return name.get(); }
+  const std::string* getName() const { return name.get(); }
+  void setName(std::unique_ptr<std::string>&& str) { name = std::move(str); }
 
-  Decl* getOwner() { return owner; }
-  void setOwner(Decl* decl) { owner = decl; }
+  ScopeCreator* getOwner() { return owner; }
+  const ScopeCreator* getOwner() const { return owner; }
+  void setOwner(ScopeCreator* sc) { owner = sc; }
 };
 
 #endif

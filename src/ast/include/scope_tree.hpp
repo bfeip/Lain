@@ -4,7 +4,7 @@
 class ScopeTree {
 private:
   struct Node {
-    Type* type; // type == NULL <-> scope creator w/o type i.e. function
+    Type* type; // type == NULL <-> scope creator w/o type
     
     Node* parent;
     std::vector<std::unique_ptr<Node>> children;
@@ -15,7 +15,7 @@ private:
 public:
   ScopeTree() : cur(nullptr), topTypes() {}
 
-  void pushType(Type* t);
+  void pushType(Type* t); // remember to check for unresolved types first
   void pushFunction();
 
   Type* findType(const std::string& name); // resolves namespaces i.e. this::is::a::type

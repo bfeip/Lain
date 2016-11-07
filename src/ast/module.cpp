@@ -19,7 +19,7 @@ void AST::proccessDecl(std::unique_ptr<Decl> decl) {
     types.pushFunction();
   }
 
-  if(curDecl) {
+  if(curDecl != nullptr) {
     decl->setOwner(curDecl);
     curDecl->setOwned(std::move(decl));
   }
@@ -57,7 +57,7 @@ Decl* AST::findDecl(const std::string& name) {
   }
   
   if(FunctionDecl* fd = dynamic_cast<FunctionDecl>(curDecl)) {
-    std::vector<Decl*> below = fd->getOwned();
+    const std::vector<Decl*>& below = fd->getOwned();
     for(Decl*& e : below) {
       if(e->getName() == name) {
 	return e;
@@ -66,7 +66,7 @@ Decl* AST::findDecl(const std::string& name) {
   }
   
   if(ClassDecl* cd = dynamic_cast<ClassDecl>(curDecl)) {
-    std::vector<Decl*> below = cd->getOwned();
+    const std::vector<Decl*>& below = cd->getOwned();
     for(Decl* e : below) {
       if(e->getName() == name) {
 	return e;
@@ -79,4 +79,11 @@ Decl* AST::findDecl(const std::string& name) {
 
 Type* AST::findType(const std::string& name) {
   return types.findType(name);
+}
+
+Type* AST::addUnresolvedType(const std::string& name) {
+  std::unique_ptr<Type> t(new Type(name));
+  unresolvedTypes.emplace_back(t.get());
+  types.pushType(std::move(t))
+  return unresolvedTypes.last();
 }

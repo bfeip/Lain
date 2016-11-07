@@ -12,11 +12,17 @@ configure_file(
 include_directories(
   "./src/lexer/include"
   "./src/ast/include"
-  "./src/parser/include"
+  "./src/parser"
   )
 
 file(GLOB LEXER_SOURCES "./src/lexer/*.cpp")
 
-add_definitions(-std=c++11)
+file(GLOB AST_SOURCES "./src/ast/*.cpp")
+file(GLOB AST_TESTS_SOURCES "./src/ast/tests/*.cpp")
+
+file(GLOB PARSER_SOURCES "./src/parser/*.cpp")
+
+add_definitions(-std=c++14)
 
 add_executable(Lexer ${LEXER_SOURCES})
+add_executable(Parser ${PARSER_SOURCES})
