@@ -9,7 +9,7 @@ private:
   std::unique_ptr<Expr> body;
 public:
   GroupedExpr() = delete;
-  GroupedExpr(AstNode* p, std::unique_ptr<Expr>&& expr) :
+  GroupedExpr(AstNode* p, std::unique_ptr<Expr> expr) :
     Stmt(p), Expr(p), body(std::move(expr)) {}
   virtual ~GroupedExpr() = default;
 

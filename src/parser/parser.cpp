@@ -607,169 +607,476 @@ void Parser::parseCompoundStmt(Symbol& sym, CompoundStmt* cs) {
 
 std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
 					Stmt* owner) {
-  // I'm so so so sorry
-  std::string leftStr = "";
+  std::unique_ptr<Expr> ret;
+  std::string identifier = "";
+  std::string literal = "";
+  LiteralKind literalKind;
+
+  // check if this a grouped expression
+
+  // get id if we were passed one, else check if sym is an id
   if(id) {
-    if(owner) {
-      // left courld be a variable expression or function call
-      leftStr = *id;
-    }
-    else {
-      // this shouldn't be possible... I think
-      storeError("I honestly don't know if this is okay", sym);
-      return std::move(std::unique_ptr<Expr>(nullptr));
-    }
+    identifier = *id;
   }
-  
   if(sym.getToken() == TOK_IDENTIFIER) {
-    leftStr = *sym.getSymbolData()->getAsString();
+    if(id) {
+      storeError("Two identifiers in a row?", sym);
+      consumeObject(sym);
+      return std::unique_ptr<Expr>(nullptr);
+    }
+    identifier = *sym.getSymbolData()->getAsString();
     nextSignificantToken(sym);
   }
-  
-  if(leftStr != "") {
-    // there is a left operand
+
+  // check if sym is a literal of some kind
+  if(sym.getToken() == TOK_STR_LIT ||
+     sym.getToken() == TOK_NUM_LIT ||
+     sym.getToken() == TOK_CHAR_LIT) {
+    if(id) {
+      storeError("Identifier followed by literal?", sym);
+      consumeObject(sym);
+      return std::unique_ptr<Expr>(nullptr);
+    }
+    literal = *sym.getSymbolData()->getAsString();
+    switch(sym.getToken()) {
+    case TOK_STR_LIT:
+      literalKind = LK_STR;
+      break;
+    case TOK_CHAR_LIT:
+      literalKind = LK_CHAR;
+      break;
+    case TOK_NUM_LIT:
+      literalKind = LK_NUM;
+      break;
+    }
+    nextSignificantToken(sym);
+  } 
+
+  // get pre-identifier ops
+  OperationType preOp = OP_VOID;
+  if(identifier == "" && literal == "") {
+    // for now only one of these ops is allowed at a time
     switch(sym.getToken()) {
     case TOK_EOF:
       fatalError("Unexpected EOF", sym);
-      return std::move(std::unique_ptr<Expr>(nullptr));
-    case TOK_SEMICOLON:
-    case TOK_CLOSE_PAREN:
-    case TOK_CLOSE_SQUARE_BRACKET:
-      // end of expr
-      {
-	VarDecl* var = owner->findVar(leftStr);
-	std::unique_ptr<VarInstanceExpr> ret(new VarInstanceExpr(owner, var));
-	return std::move(ret);
-      }
-    case TOK_OPEN_PAREN:
-      // left is the name of a function, this is a call
-      {
-	FunctionDecl* func = module.findFunctionDecl(leftStr);
-	// TODO what if this func doesnt exist yet
-	std::unique_ptr<FunctionCallExpr> ret(new FunctionCallExpr(owner, func));
-	while(sym.getToken() != TOK_CLOSE_PAREN) {
-	  // get args
-	  ret->addArg(parseExpr(sym, nullptr, owner));
-	}
-	nextSignificantToken(sym);
-	return std::move(ret);
-      }
-    case TOK_INC:
-      // post inc
-      {
-	nextSignificantToken(sym);
-	VarDecl* var = owner->findVar(leftStr);
-	std::unique_ptr<VarInstanceExpr> operand(new VarInstanceExpr(owner, var));
-	return std::make_unique<UnaryOperationExpr>(owner, std::move(operand), OP_POST_INC);
-      }
-    case TOK_DEC:
-      // post dec
-      {
-	nextSignificantToken(sym);
-	VarDecl* var = owner->findVar(leftStr);
-	std::unique_ptr<VarInstanceExpr> operand(new VarInstanceExpr(owner, var));
-	return std::make_unique<UnaryOperationExpr>(owner, std::move(operand), OP_POST_DEC);
-      }
+      return std::unique_ptr<Expr>(nullptr);
     case TOK_ADD:
-      {
-	nextSignificantToken(sym);
-	VarDecl* var = owner->findVar(leftStr);
-	std::unique_ptr<VarInstanceExpr> lOperand(new VarInstanceExpr(owner, var));
-	std::unique_ptr<Expr> rOperand(std::move(parseExpr(sym, nullptr, owner)));
-	return std::make_unique<BinaryOperationExpr>(owner, std::move(lOperand),
-						     std::move(rOperand), OP_ADD);
-      }
+      preOp = OP_ABS;
+      break;
     case TOK_SUB:
-      {
-	nextSignificantToken(sym);
-	VarDecl* var = owner->findVar(leftStr);
-	std::unique_ptr<VarInstanceExpr> lOperand(new VarInstanceExpr(owner, var));
-	std::unique_ptr<Expr> rOperand(std::move(parseExpr(sym, nullptr, owner)));
-	return std::make_unique<BinaryOperationExpr>(owner, std::move(lOperand),
-						     std::move(rOperand), OP_SUB);
-      }
-    case TOK_MUL:
-      {
-	nextSignificantToken(sym);
-     	VarDecl* var = owner->findVar(leftStr);
-	std::unique_ptr<VarInstanceExpr> lOperand(new VarInstanceExpr(owner, var));
-	std::unique_ptr<Expr> rOperand(std::move(parseExpr(sym, nullptr, owner)));
-	return std::make_unique<BinaryOperationExpr>(owner, std::move(lOperand),
-						     std::move(rOperand), OP_MUL);
-      }
-    case TOK_DIV:
-      {
-	nextSignificantToken(sym);
-	VarDecl* var = owner->findVar(leftStr);
-	std::unique_ptr<VarInstanceExpr> lOperand(new VarInstanceExpr(owner, var));
-	std::unique_ptr<Expr> rOperand(std::move(parseExpr(sym, nullptr, owner)));
-	return std::make_unique<BinaryOperationExpr>(owner, std::move(lOperand),
-						     std::move(rOperand), OP_DIV);
-      }
-    case TOK_MOD:
-      {
-	nextSignificantToken(sym);
-	VarDecl* var = owner->findVar(leftStr);
-	std::unique_ptr<VarInstanceExpr> lOperand(new VarInstanceExpr(owner, var));
-	std::unique_ptr<Expr> rOperand(std::move(parseExpr(sym, nullptr, owner)));
-	return std::make_unique<BinaryOperationExpr>(owner, std::move(lOperand),
-						     std::move(rOperand), OP_ADD);
-      }
+      preOp = OP_NEG;
+      break;
+    case TOK_INC:
+      preOp = OP_PRE_INC;
+      break;
+    case TOK_DEC:
+      preOp = OP_PRE_DEC;
+      break;
+    case TOK_NOT:
+      preOp = OP_NOT;
+      break;
     default:
-      storeError("Unknown operation", sym);
+      storeError("Unexpected token in expr", sym);
+      consumeObject(sym);
       return std::unique_ptr<Expr>(nullptr);
     }
-  }
+    nextSignificantToken(sym);
 
-  else {
-    // there is no left operand, nor is there hope
+    // we can't leave this block without either a lvalue, rvalue, or open paren
     switch(sym.getToken()) {
+    case TOK_EOF:
+      fatalError("Unexpected EOF", sym);
+      return std::unique_ptr<Expr>(nullptr);
+    case TOK_IDENTIFIER:
+      identifier = *sym.getSymbolData()->getAsString();
+      nextSignificantToken(sym);
+      break;
+    case TOK_STR_LIT:
+      literal = *sym.getSymbolData()->getAsString();
+      literalKind = LK_STR;
+      nextSignificantToken(sym);
+      break;
+    case TOK_CHAR_LIT:
+      literal = *sym.getSymbolData()->getAsString();
+      literalKind = LK_CHAR;
+      nextSignificantToken(sym);
+      break;
+    case TOK_NUM_LIT:
+      literal = *sym.getSymbolData()->getAsString();
+      literalKind = LK_NUM;
+      nextSignificantToken(sym);
+      break;
     case TOK_OPEN_PAREN:
-      // grouped expr
-      {
-	nextSignificantToken(sym);
-	std::unique_ptr<Expr> body(std::move(parseExpr(sym, nullptr, owner)));
-	return std::make_unique<GroupedExpr>(owner, std::move(body));
-      }
-    case TOK_INC:
-      // pre inc
-      {
-	nextSignificantToken(sym);
-	VarDecl* var = owner->findVar(leftStr);
-	std::unique_ptr<Expr> operand(std::move(parseExpr(sym, nullptr, owner)));
-	return std::make_unique<UnaryOperationExpr>(owner, std::move(operand), OP_PRE_INC);
-      }
-    case TOK_DEC:
-      // pre dec
-      {
-	nextSignificantToken(sym);
-	VarDecl* var = owner->findVar(leftStr);
-      	std::unique_ptr<Expr> operand(std::move(parseExpr(sym, nullptr, owner)));
-	return std::make_unique<UnaryOperationExpr>(owner, std::move(operand), OP_POST_INC);
-      }
-    case TOK_ADD:
-      // take absolute value of operand
-      {
-	nextSignificantToken(sym);
-	VarDecl* var = owner->findVar(leftStr);
-      	std::unique_ptr<Expr> operand(std::move(parseExpr(sym, nullptr, owner)));
-	return std::make_unique<UnaryOperationExpr>(owner, std::move(operand), OP_ABS);
-      }
-    case TOK_SUB:
-      // negate operand
-      {
-	nextSignificantToken(sym);
-	VarDecl* var = owner->findVar(leftStr);
-      	std::unique_ptr<Expr> operand(std::move(parseExpr(sym, nullptr, owner)));
-	return std::make_unique<UnaryOperationExpr>(owner, std::move(operand), OP_NEG);
-      }
+      break;
     default:
-      storeError("Unknown operation", sym);
+      storeError("Unexpected token after pre-op", sym);
+      consumeObject(sym);
       return std::unique_ptr<Expr>(nullptr);
     }
   }
 
-  return std::unique_ptr<Expr>(nullptr);
+  // by now we have either a literal or an identifier
+  // we're ignoring the dot operator and array access here for now
+  if(identifier != "") {
+    // this is a function call or a variable
+    if(sym.getToken() == TOK_OPEN_PAREN) {
+      FunctionDecl* funcDecl = owner->findScope()->findFunctionDecl(identifier);
+      std::unique_ptr<FunctionCallExpr> func(new FunctionCallExpr(owner, funcDecl));
+      nextSignificantToken(sym);
+      while(true) {
+	// grab args seperated by commas and ending in a close paren
+	std::unique_ptr<Expr> arg = parseExpr(sym, nullptr, func.get());
+	func->addArg(std::move(arg));
+	if(sym.getToken() == TOK_COMMA) {
+	  nextSignificantToken(sym);
+	  continue;
+	}
+	else if(sym.getToken() == TOK_CLOSE_PAREN) {
+	  nextSignificantToken(sym);
+	  break;
+	}
+	else {
+	  storeError("Unexpected token in argument", sym);
+	  consumeObject(sym);
+	  return std::unique_ptr<Expr>(nullptr);
+	}
+      }
+      ret = std::move(func);
+    }
+    else {
+      ret = std::make_unique<VarInstanceExpr>(owner, owner->findVar(identifier));
+    }
+  }
+  else if(literal != "") {
+    // this is a literal
+    ret = std::make_unique<LiteralExpr>(owner, literal, literalKind);
+  }
+  else if(sym.getToken() == TOK_OPEN_PAREN) {
+    // this is a grouped expression
+    nextSignificantToken(sym);
+    std::unique_ptr<GroupedExpr> group(new GroupedExpr(owner, nullptr));
+    std::unique_ptr<Expr> body = parseExpr(sym, nullptr, group.get());
+    if(sym.getToken() != TOK_CLOSE_PAREN) {
+      storeError("Grouped expression must end in a close paren", sym);
+      consumeObject(sym);
+      return std::unique_ptr<Expr>(nullptr);
+    }
+    group->setBody(std::move(body));
+    ret = std::move(group);
+  }
+    
+  // apply the preOp if there was one
+  if(preOp != OP_VOID) {
+    ret = std::make_unique<UnaryOperationExpr>(owner, std::move(ret), preOp);
+  }
+
+  // get postop stuff is there is any
+  OperationType postOp = OP_VOID;
+  switch(sym.getToken()) {
+  case TOK_EOF:
+    fatalError("Unexpected EOF", sym);
+    return std::unique_ptr<Expr>(nullptr);
+  case TOK_INC:
+    postOp = OP_POST_INC;
+    nextSignificantToken(sym);
+    break;
+  case TOK_DEC:
+    postOp = OP_POST_DEC;
+    nextSignificantToken(sym);
+    break;
+  }
+
+  // apply the postOp if there was one
+  if(postOp != OP_VOID) {
+    ret = std::make_unique<UnaryOperationExpr>(owner, std::move(ret), preOp);
+  }
+
+  // if this is part of a bianry expr, get the other part recursivly
+  // It should be noted that when an expr is added as an operand, that expr's
+  // owner is changed to be the binary expr
+  switch(sym.getToken()) {
+  case TOK_EOF:
+    fatalError("Unexpected EOF", sym);
+    return std::unique_ptr<Expr>(nullptr);
+  case TOK_ASSIGN:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_ADD:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_ADD));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+
+    }
+  case TOK_SUB:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_SUB));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_MUL:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_MUL));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_DIV:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_DIV));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_MOD:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_MOD));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_ADD_ASSIGN:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_ADD_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_SUB_ASSIGN:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_SUB_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_MUL_ASSIGN:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_MUL_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_DIV_ASSIGN:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_DIV_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_MOD_ASSIGN:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_MOD_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_AND:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_AND));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_OR:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_OR));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_XOR:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_XOR));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_LSH:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_LSH));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_RSH:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_RSH));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_AND_ASSIGN:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_AND_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_OR_ASSIGN:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_OR_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_XOR_ASSIGN:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_XOR_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_LSH_ASSIGN:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_LSH_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_RSH_ASSIGN:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_RSH_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_EQ:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_EQ));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_NEQ:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_NEQ));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_LOGI_AND:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_LOGI_AND));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_LOGI_OR:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_LOGI_OR));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  case TOK_LOGI_XOR:
+    {
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
+								       nullptr, OP_LOGI_XOR));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      nextSignificantToken(sym);
+      break;
+    }
+  }
+
+  // the previous switch should have recursivly eaten add the binary operators
+  // now we see if their is and indication of an end
+  switch(sym.getToken()) {
+  case TOK_EOF:
+    fatalError("Unexpected EOF", sym);
+    return std::unique_ptr<Expr>(nullptr);
+  case TOK_CLOSE_PAREN:
+  case TOK_CLOSE_SQUARE_BRACKET:
+  case TOK_COMMA:
+  case TOK_SEMICOLON:
+    return ret;
+  default:
+    storeError("Something unexpected happened", sym);
+    consumeObject(sym);
+    return std::unique_ptr<Expr>(nullptr);
+  }
 }
   
 

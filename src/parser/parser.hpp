@@ -1,8 +1,6 @@
 #ifndef PARSER_HPP
 #define PARSER_HPP
 
-#include <stack>
-
 #include "parser_error.hpp"
 #include "lexer.hpp"
 #include "module.hpp"

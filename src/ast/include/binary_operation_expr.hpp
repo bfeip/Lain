@@ -12,8 +12,8 @@ private:
   OperationType op;
 public:
   BinaryOperationExpr() = delete;
-  BinaryOperationExpr(AstNode* p, std::unique_ptr<Expr>&& l,
-		      std::unique_ptr<Expr>&& r, OperationType ot) :
+  BinaryOperationExpr(AstNode* p, std::unique_ptr<Expr> l,
+		      std::unique_ptr<Expr> r, OperationType ot) :
     Stmt(p), Expr(p), lOperand(std::move(l)), rOperand(std::move(r)), op(ot) {}
   virtual ~BinaryOperationExpr() = default;
 

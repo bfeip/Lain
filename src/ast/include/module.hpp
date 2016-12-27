@@ -19,6 +19,8 @@
 #include "return_stmt.hpp"
 #include "var_decl_stmt.hpp"
 
+#include "literal_kind.hpp"
+#include "literal_expr.hpp"
 #include "var_instance_expr.hpp"
 #include "function_call_expr.hpp"
 #include "unary_operation_expr.hpp"
@@ -38,7 +40,7 @@ public:
   Decl* findDecl(const std::string& name);
   Type* findType(const std::string& name);
 
-  std::vector<VarDecl*> getGlobals();
+  const std::vector<VarDecl*>& getGlobals();
   void addGlobal(std::unique_ptr<VarDecl> vd) { globals.emplace_back(std::move(vd)); }
 
   void resolveTypes();

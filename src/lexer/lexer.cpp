@@ -211,7 +211,11 @@ Symbol Lexer::next() {
   case '^':
     sym.setPos(line, col);
     pop();
-    if(peek() == '=') {
+    if(peek() == '^') {
+      sym.setToken(TOK_LOGI_XOR);
+      pop();
+    }
+    else if(peek() == '=') {
       sym.setToken(TOK_XOR_ASSIGN);
       pop();
     }

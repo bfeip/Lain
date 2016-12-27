@@ -21,6 +21,7 @@ enum Token {
   TOK_LSH,
   TOK_LOGI_AND,
   TOK_LOGI_OR,
+  TOK_LOGI_XOR,
   TOK_INC,
   TOK_DEC,
   TOK_EQ,

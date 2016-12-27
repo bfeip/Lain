@@ -2,6 +2,8 @@
 #define OPERATION_TYPE_HPP
 
 enum OperationType {
+  OP_VOID,
+  
   OP_POST_INC,
   OP_POST_DEC,
   OP_PRE_INC,
@@ -9,17 +11,43 @@ enum OperationType {
   
   OP_ABS,
   OP_NEG,
+
+  OP_ASSIGN,
   
   OP_ADD,
   OP_SUB,
   OP_MUL,
   OP_DIV,
   OP_MOD,
+
+  OP_ADD_ASSIGN,
+  OP_SUB_ASSIGN,
+  OP_MUL_ASSIGN,
+  OP_DIV_ASSIGN,
+  OP_MOD_ASSIGN,
   
   OP_AND,
   OP_OR,
   OP_XOR,
   OP_NOT,
+  OP_LSH,
+  OP_RSH,
+
+  OP_AND_ASSIGN,
+  OP_OR_ASSIGN,
+  OP_XOR_ASSIGN,
+  OP_NOT_ASSIGN,
+  OP_LSH_ASSIGN,
+  OP_RSH_ASSIGN,
+
+  OP_EQ,
+  OP_NEQ,
+
+  OP_LOGI_AND,
+  OP_LOGI_NAND,
+  OP_LOGI_OR,
+  OP_LOGI_XOR,
+  OP_LOGI_NOT,
 };
 
 #endif
