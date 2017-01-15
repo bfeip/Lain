@@ -1,4 +1,0 @@
-/home/zachary/src/lain/build/CMakeFiles/edit_cache.dir
-/home/zachary/src/lain/build/CMakeFiles/Parser.dir
-/home/zachary/src/lain/build/CMakeFiles/rebuild_cache.dir
-/home/zachary/src/lain/build/CMakeFiles/Lexer.dir

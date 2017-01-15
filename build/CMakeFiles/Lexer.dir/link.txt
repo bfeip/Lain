@@ -1,1 +1,0 @@
-/usr/bin/c++      CMakeFiles/Lexer.dir/src/lexer/lexer_dump.cpp.o CMakeFiles/Lexer.dir/src/lexer/lexer.cpp.o  -o Lexer -rdynamic 

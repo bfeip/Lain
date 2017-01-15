@@ -1,2 +1,0 @@
-#define LAIN_VERSION_MAJOR 
-#define LAIN_VERSION_MINOR 

@@ -800,263 +800,263 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
     return std::unique_ptr<Expr>(nullptr);
   case TOK_ASSIGN:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_ASSIGN));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_ADD:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_ADD));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
 
     }
   case TOK_SUB:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_SUB));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_MUL:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_MUL));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_DIV:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_DIV));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_MOD:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_MOD));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_ADD_ASSIGN:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_ADD_ASSIGN));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_SUB_ASSIGN:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_SUB_ASSIGN));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_MUL_ASSIGN:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_MUL_ASSIGN));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_DIV_ASSIGN:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_DIV_ASSIGN));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_MOD_ASSIGN:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_MOD_ASSIGN));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_AND:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_AND));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_OR:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_OR));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_XOR:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_XOR));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_LSH:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_LSH));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_RSH:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_RSH));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_AND_ASSIGN:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_AND_ASSIGN));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_OR_ASSIGN:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_OR_ASSIGN));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_XOR_ASSIGN:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_XOR_ASSIGN));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_LSH_ASSIGN:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_LSH_ASSIGN));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_RSH_ASSIGN:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_RSH_ASSIGN));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_EQ:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_EQ));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_NEQ:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_NEQ));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_LOGI_AND:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_LOGI_AND));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_LOGI_OR:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_LOGI_OR));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   case TOK_LOGI_XOR:
     {
+      nextSignificantToken(sym);
       std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
 								       nullptr, OP_LOGI_XOR));
       std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
-      nextSignificantToken(sym);
       break;
     }
   }
