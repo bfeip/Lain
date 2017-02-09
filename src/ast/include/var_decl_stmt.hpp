@@ -7,7 +7,7 @@ private:
   std::vector<std::unique_ptr<VarDecl>> vars;
 public:
   VarDeclStmt() = delete;
-  VarDeclStmt(AstNode* p) : Stmt(p) {}
+  VarDeclStmt(ScopeCreator* p) : Stmt(p) {}
   virtual ~VarDeclStmt() = default;
 
   QualType* getType() { return type.get(); }

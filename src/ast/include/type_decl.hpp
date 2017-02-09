@@ -1,9 +1,10 @@
 #ifndef TYPE_DECL_HPP
 #define TYPE_DECL_HPP
 
+class Type;
 #include "ast_shared.hpp"
+#include "decl.hpp"
 #include "access_modifier.hpp"
-#include "type.hpp"
 
 class TypeDecl : virtual public Decl {
 private:
@@ -15,13 +16,11 @@ public:
   TypeDecl(ScopeCreator* sc) : Decl(sc) {}
   virtual ~TypeDecl() = default;
   
-  void setName(std::unique_ptr<std::string>&& str) {
-    name = std::move(str);
-    type->setName(std::unique_ptr<std::string>(new std::string(*name.get())));
-  }
-
+  void setName(std::unique_ptr<std::string> str);
   Type* getType() { return type.get(); }
   const Type* getType() const { return type.get(); }
 };
+
+#include "type.hpp"
 
 #endif

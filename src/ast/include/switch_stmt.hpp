@@ -1,13 +1,13 @@
 #ifndef SWITCH_STMT_HPP
 #define SWITCH_STMT_HPP
 
-class SwitchStmt : virtual public Stmt {
+class SwitchStmt : virtual public Stmt, virtual public ScopeCreator {
 private:
   std::unique_ptr<Expr> condition;
   std::unique_ptr<CompoundStmt> body;
 public:
   SwitchStmt() = delete;
-  SwitchStmt(AstNode* p) : Stmt(p) {}
+  SwitchStmt(ScopeCreator* p) : Stmt(p), ScopeCreator(p) {}
   virtual ~SwitchStmt() = default;
 
   Expr* getCondition() { return condition.get(); }

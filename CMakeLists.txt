@@ -25,8 +25,8 @@ file(GLOB PARSER_SOURCES "./src/parser/*.cpp")
 
 file(GLOB EMITTER_SOURCES "./src/emitter/*.cpp")
 
-add_definitions(-std=c++14)
+add_definitions(-std=c++14 -g)
 
 add_executable(Lexer ${LEXER_SOURCES})
-add_executable(Parser ${PARSER_SOURCES})
+add_executable(Parser ${PARSER_SOURCES} ${AST_SOURCES} "./src/lexer/lexer.cpp")
 add_executable(Emitter ${EMITTER_SOURCES})

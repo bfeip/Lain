@@ -4,7 +4,7 @@
 class ContinueStmt : public Stmt {
 public:
   ContinueStmt() = delete;
-  ContinueStmt(AstNode* p) : Stmt(p) {}
+  ContinueStmt(ScopeCreator* p) : Stmt(p) {}
   virtual ~ContinueStmt() = default;
 };
 

@@ -6,7 +6,7 @@
 class NullStmt : virtual public Stmt {
 public:
   NullStmt() = delete;
-  NullStmt(AstNode* p) : Stmt(p) {}
+  NullStmt(ScopeCreator* p) : Stmt(p) {}
   virtual ~NullStmt() = default;
 };
 

@@ -1,13 +1,13 @@
 #ifndef ELSE_STMT_HPP
 #define ELSE_STMT_HPP
 
-class ElseStmt : virtual public Stmt {
+class ElseStmt : virtual public Stmt, virtual public ScopeCreator {
 private:
   std::unique_ptr<Stmt> body;
   IfStmt* ifStmt;
 public:
   ElseStmt() = delete;
-  ElseStmt(AstNode* p) : Stmt(p) {}
+  ElseStmt(ScopeCreator* p) : Stmt(p), ScopeCreator(p) {}
   virtual ~ElseStmt() = default;
   
   Stmt* getBody() { return body.get(); }

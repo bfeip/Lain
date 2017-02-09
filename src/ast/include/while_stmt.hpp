@@ -1,13 +1,16 @@
 #ifndef WHILE_STMT_HPP
 #define WHILE_STMT_HPP
 
-class WhileStmt : virtual public Stmt {
+#include "scope_creator.hpp"
+#include "expr.hpp"
+
+class WhileStmt : virtual public Stmt, virtual public ScopeCreator {
 private:
   std::unique_ptr<Expr> condition;
   std::unique_ptr<Stmt> body;
 public:
   WhileStmt() = delete;
-  WhileStmt(AstNode* p) : Stmt(p) {}
+  WhileStmt(ScopeCreator* p) : Stmt(p), ScopeCreator(p) {}
   virtual ~WhileStmt() = default;
 
   Expr* getCondition() { return condition.get(); }

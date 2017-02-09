@@ -9,8 +9,8 @@ private:
   std::unique_ptr<Expr> body;
 public:
   GroupedExpr() = delete;
-  GroupedExpr(AstNode* p, std::unique_ptr<Expr> expr) :
-    Stmt(p), Expr(p), body(std::move(expr)) {}
+  GroupedExpr(ScopeCreator* owner, Expr* pe, std::unique_ptr<Expr> expr) :
+    Stmt(owner), Expr(owner, pe), body(std::move(expr)) {}
   virtual ~GroupedExpr() = default;
 
   Expr* getBody() { return body.get(); }

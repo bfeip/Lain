@@ -3,7 +3,7 @@
 
 #include "ast_shared.hpp"
 #include "ast_node.hpp"
-#include "scope_creator.hpp"
+class ScopeCreator;
 
 class Decl : virtual public AstNode {
 protected:
@@ -17,11 +17,13 @@ public:
   
   std::string* getName() { return name.get(); }
   const std::string* getName() const { return name.get(); }
-  void setName(std::unique_ptr<std::string>&& str) { name = std::move(str); }
+  void setName(std::unique_ptr<std::string> str) { name = std::move(str); }
 
   ScopeCreator* getOwner() { return owner; }
   const ScopeCreator* getOwner() const { return owner; }
   void setOwner(ScopeCreator* sc) { owner = sc; }
 };
+
+#include "scope_creator.hpp"
 
 #endif

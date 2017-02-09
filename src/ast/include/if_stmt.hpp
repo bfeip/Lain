@@ -1,13 +1,13 @@
 #ifndef IF_STMT_HPP
 #define IF_STMT_HPP
 
-class IfStmt : virtual public Stmt {
+class IfStmt : virtual public Stmt, virtual public ScopeCreator {
 private:
   std::unique_ptr<Expr> condition;
   std::unique_ptr<Stmt> body;
 public:
   IfStmt() = delete;
-  IfStmt(AstNode* p) : Stmt(p) {}
+  IfStmt(ScopeCreator* p) : Stmt(p), ScopeCreator(p) {}
   virtual ~IfStmt() = default;
 
   Expr* getCondition() { return condition.get(); }

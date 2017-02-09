@@ -6,14 +6,8 @@ int main(int argc, char** argv) {
     std::cout << "Needs an input file\n";
     return 1;
   }
-  std::ifstream in;
-  in.open(argv[1]);
-  if(!in) {
-    std::cout << "Failed to open the input file for reading\n";
-    return 2;
-  }
   
-  Lexer lex(in);
+  Lexer lex(argv[1]);
   Symbol sym = lex.next();
   const SymbolData* dat;
   while(sym.getToken() != TOK_EOF) {

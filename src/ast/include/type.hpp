@@ -2,6 +2,8 @@
 #define TYPE_HPP
 
 #include "ast_shared.hpp"
+#include "access_modifier.hpp"
+class TypeDecl;
 
 class Type {
 private:
@@ -31,17 +33,15 @@ public:
   const std::string* getName() const { return name.get(); }
   void setName(std::unique_ptr<std::string>&& str) { name = std::move(str); }
     
-  const std::pair<Type*, AccessModifier>& findParent(const std::string& name);
+  const std::pair<Type*, AccessModifier>* findParent(const std::string& name);
   void addParent(Type* par, AccessModifier am) {
     parents.emplace(par, am);
   }
 
-  const std::pair<Type*, AccessModifier>& findChild(const std::string& name);
+  const std::pair<Type*, AccessModifier>* findChild(const std::string& name);
   void addChild(Type* child, AccessModifier am) {
     children.emplace(child, am);
   }
 };
-
-int Type::nextId = 14;
 
 #endif

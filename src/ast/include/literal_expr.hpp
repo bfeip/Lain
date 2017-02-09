@@ -10,8 +10,8 @@ private:
   std::string lit;
 public:
   LiteralExpr() = delete;
-  LiteralExpr(AstNode* p, const std::string& l, LiteralKind lk) :
-    Stmt(p), Expr(p), kind(lk), lit(l) {}
+  LiteralExpr(ScopeCreator* owner, Expr* pe, const std::string& l, LiteralKind lk) :
+    Stmt(owner), Expr(owner, pe), kind(lk), lit(l) {}
   virtual ~LiteralExpr() = default;
 
   LiteralKind getKind() const { return kind; }

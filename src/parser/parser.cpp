@@ -20,7 +20,7 @@ void Parser::parseTop() {
       break;
     }
     nextSignificantToken(sym);
-  } 
+  }
   return;
 }
 
@@ -34,7 +34,7 @@ void Parser::parseClassTop(Symbol& sym, ScopeCreator* owner) {
   if(sym.getToken() == TOK_IDENTIFIER) {
     // named class
     const std::string& classname = *sym.getSymbolData()->getAsString();
-    if(const Decl* d = module.findDecl(classname)) {
+    if(const Decl* d = owner->findDecl(classname)) {
       // decl of this type exists
       storeError("Name collision", sym);
       consumeObject(sym);
@@ -130,7 +130,7 @@ void Parser::parseClassInheritance(Symbol& sym, ClassDecl* cd) {
 
     // link this class to its parents and vice versa
     const std::string& inhername = *sym.getSymbolData()->getAsString();
-    Type* inher = module.findType(inhername);
+    Type* inher = module.findTypeDecl(inhername)->getType();
     cd->getType()->addParent(inher, am);
     inher->addChild(cd->getType(), am);
 
@@ -151,10 +151,10 @@ void Parser::parseClassInheritance(Symbol& sym, ClassDecl* cd) {
       return;
     }
   }
-  
+
   return;
 }
-    
+
 void Parser::parseClassBody(Symbol& sym, ClassDecl* cd) {
   AccessModifier am = AM_PUBLIC;
   while(sym.getToken() != TOK_CLOSE_BRACKET) {
@@ -166,24 +166,24 @@ void Parser::parseClassBody(Symbol& sym, ClassDecl* cd) {
       am = AM_PUBLIC;
       nextSignificantToken(sym);
       if(sym.getToken() != TOK_COLON) {
-	storeError("Expected colon after access modifier", sym);
-	continue;
+        storeError("Expected colon after access modifier", sym);
+        continue;
       }
       break;
     case TOK_PROTECTED:
       am = AM_PROTECTED;
       nextSignificantToken(sym);
       if(sym.getToken() != TOK_COLON) {
-	storeError("Expected colon after access modifier", sym);
-	continue;
+        storeError("Expected colon after access modifier", sym);
+        continue;
       }
       break;
     case TOK_PRIVATE:
       am = AM_PRIVATE;
       nextSignificantToken(sym);
       if(sym.getToken() != TOK_COLON) {
-	storeError("Expected colon after access modifier", sym);
-	continue;
+        storeError("Expected colon after access modifier", sym);
+        continue;
       }
       break;
     case TOK_IDENTIFIER:
@@ -200,7 +200,7 @@ void Parser::parseClassVarInstatiation(Symbol& sym, ClassDecl* cd) {
   ScopeCreator* owner = cd->getOwner();
   std::unique_ptr<VarDeclStmt> vds(new VarDeclStmt(owner));
   vds->setType(std::make_shared<QualType>(cd->getType()));
-  
+
   if(dynamic_cast<Module*>(owner)) {
     // global variable instantation
     parseVarDeclStmt(sym, vds.get(), nullptr);
@@ -210,7 +210,7 @@ void Parser::parseClassVarInstatiation(Symbol& sym, ClassDecl* cd) {
     }
     return;
   }
-  
+
   if(ClassDecl* owningClass = dynamic_cast<ClassDecl*>(owner)) {
     // member variable instantation
     parseVarDeclStmt(sym, vds.get(), nullptr);
@@ -227,7 +227,7 @@ void Parser::parseClassVarInstatiation(Symbol& sym, ClassDecl* cd) {
     owningStmt->addStmt(std::move(vds));
     return;
   }
-    
+
   fatalError("Missing case in parser", sym);
   return;
 }
@@ -252,7 +252,7 @@ void Parser::parseTypedef(Symbol& sym, ScopeCreator* owner) {
     consumeObject(sym);
     return;
   }
-  tdd->setDefinition(*sym.getSymbolData()->getAsString());
+  tdd->setDefinition(owner->findTypeDecl(*sym.getSymbolData()->getAsString())->getType());
 
   nextSignificantToken(sym);
   if(sym.getToken() != TOK_SEMICOLON) {
@@ -286,7 +286,7 @@ void Parser::parseIdDecl(Symbol& sym, ScopeCreator* owner) {
 
   // get name of base type and construct QualType
   const std::string& typeName = *sym.getSymbolData()->getAsString();
-  Type* t = module.findType(typeName);
+  Type* t = module.findTypeDecl(typeName)->getType();
   std::unique_ptr<QualType> qt(new QualType(t));
   qt->setStatic(qtStatic);
   qt->setConst(qtConst);
@@ -302,7 +302,7 @@ void Parser::parseIdDecl(Symbol& sym, ScopeCreator* owner) {
 
   // determine what kind of decl (function or var)
   nextSignificantToken(sym);
-  
+
   switch(sym.getToken()) {
   case TOK_OPEN_PAREN:
     // Function or method decl
@@ -323,19 +323,19 @@ void Parser::parseIdDecl(Symbol& sym, ScopeCreator* owner) {
       std::string typeName = name;
       parseVarDeclStmt(sym, vds.get(), &typeName);
       if(dynamic_cast<Module*>(owner)) {
-	// gloabal var decl stmt
-	std::vector<std::unique_ptr<VarDecl>>& vars = vds->stripVars();
-	for(std::unique_ptr<VarDecl>& e : vars) {
-	  module.addGlobal(std::move(e));
-	}
+        // gloabal var decl stmt
+        std::vector<std::unique_ptr<VarDecl>>& vars = vds->stripVars();
+        for(std::unique_ptr<VarDecl>& e : vars) {
+          module.addGlobal(std::move(e));
+        }
       }
       else {
-	// member var decl stmt
-	ClassDecl* cd = dynamic_cast<ClassDecl*>(owner);
-   	std::vector<std::unique_ptr<VarDecl>>& vars = vds->stripVars();
-	for(std::unique_ptr<VarDecl>& e : vars) {
-	  cd->addMember(std::move(e), AM_VOID); // TODO make ams work here
-	}
+        // member var decl stmt
+        ClassDecl* cd = dynamic_cast<ClassDecl*>(owner);
+        std::vector<std::unique_ptr<VarDecl>>& vars = vds->stripVars();
+        for(std::unique_ptr<VarDecl>& e : vars) {
+          cd->addMember(std::move(e), AM_VOID); // TODO make ams work here
+        }
       }
     }
     return;
@@ -379,7 +379,7 @@ void Parser::parseFunctionDeclTop(Symbol& sym, FunctionDecl* fd) {
     return;
   }
 }
-    
+
 void Parser::parseFunctionDeclParams(Symbol& sym, FunctionDecl* fd) {
   nextSignificantToken(sym);
   bool qtStatic = false;
@@ -389,22 +389,22 @@ void Parser::parseFunctionDeclParams(Symbol& sym, FunctionDecl* fd) {
       // get type qualifiers
       switch(sym.getToken()) {
       case TOK_STATIC:
-	qtStatic = true;
-	break;
+        qtStatic = true;
+        break;
       case TOK_CONST:
-	qtConst = true;
-	break;
+        qtConst = true;
+        break;
       default:
-	storeError("WTF in qual type", sym);
-	consumeObject(sym);
-	return;
+        storeError("WTF in qual type", sym);
+        consumeObject(sym);
+        return;
       }
       nextSignificantToken(sym);
     }
-    
+
     // get name of base type
     const std::string& typeName = *sym.getSymbolData()->getAsString();
-    Type* t = module.findType(typeName);
+    Type* t = module.findTypeDecl(typeName)->getType();
     std::shared_ptr<QualType> qt(new QualType(t));
     qt->setConst(qtConst);
     qt->setStatic(qtStatic);
@@ -445,7 +445,7 @@ void Parser::parseFunctionDeclParams(Symbol& sym, FunctionDecl* fd) {
   return;
 }
 
-void Parser::parseCompoundStmt(Symbol& sym, CompoundStmt* cs) {      
+void Parser::parseCompoundStmt(Symbol& sym, CompoundStmt* cs) {
   nextSignificantToken(sym);
   while(sym.getToken() != TOK_CLOSE_BRACKET) {
     switch(sym.getToken()) {
@@ -456,17 +456,17 @@ void Parser::parseCompoundStmt(Symbol& sym, CompoundStmt* cs) {
     case TOK_SEMICOLON:
       // null stmt
       {
-	std::unique_ptr<NullStmt> stmt(new NullStmt(cs));
-	cs->addStmt(std::move(stmt));
+        std::unique_ptr<NullStmt> stmt(new NullStmt(cs));
+        cs->addStmt(std::move(stmt));
       }
       break;
 
     case TOK_OPEN_BRACKET:
       // compound stmt
       {
-	std::unique_ptr<CompoundStmt> stmt(new CompoundStmt(cs));
-	cs->addStmt(std::move(stmt));
-	parseCompoundStmt(sym, stmt.get());
+        std::unique_ptr<CompoundStmt> stmt(new CompoundStmt(cs));
+        cs->addStmt(std::move(stmt));
+        parseCompoundStmt(sym, stmt.get());
       }
       break;
 
@@ -474,7 +474,7 @@ void Parser::parseCompoundStmt(Symbol& sym, CompoundStmt* cs) {
       // embeded class decl
       parseClassTop(sym, cs);
       break;
-      
+
     case TOK_ADD:
     case TOK_SUB:
     case TOK_INC:
@@ -482,8 +482,8 @@ void Parser::parseCompoundStmt(Symbol& sym, CompoundStmt* cs) {
     case TOK_NOT:
       // unary operator
       {
-	std::unique_ptr<Expr> stmt = parseExpr(sym, nullptr, cs);
-	cs->addStmt(std::move(stmt));
+        std::unique_ptr<Expr> stmt = parseExpr(sym, nullptr, cs, nullptr);
+        cs->addStmt(std::move(stmt));
       }
       break;
 
@@ -491,108 +491,108 @@ void Parser::parseCompoundStmt(Symbol& sym, CompoundStmt* cs) {
       // if stmt
       {
       	std::unique_ptr<IfStmt> stmt(new IfStmt(cs));
-	cs->addStmt(std::move(stmt));
-	parseIfStmt(sym, stmt.get());
+        cs->addStmt(std::move(stmt));
+        parseIfStmt(sym, stmt.get());
       }
       break;
 
     case TOK_ELSE:
       {
-	if(!dynamic_cast<IfStmt*>(cs->getStmts().back())) {
-	  storeError("Else statement without if", sym);
-	  break;
-	}
-	std::unique_ptr<ElseStmt> stmt(new ElseStmt(cs));
-	cs->addStmt(std::move(stmt));
-	stmt->setIf(dynamic_cast<IfStmt*>(cs->getStmts().back()));
-	parseElseStmt(sym, stmt.get());
+        if(!dynamic_cast<IfStmt*>(cs->getStmts().back())) {
+          storeError("Else statement without if", sym);
+          break;
+        }
+        std::unique_ptr<ElseStmt> stmt(new ElseStmt(cs));
+        cs->addStmt(std::move(stmt));
+        stmt->setIf(dynamic_cast<IfStmt*>(cs->getStmts().back()));
+        parseElseStmt(sym, stmt.get());
       }
       break;
 
     case TOK_WHILE:
       {
-	std::unique_ptr<WhileStmt> stmt(new WhileStmt(cs));
-	cs->addStmt(std::move(stmt));
-	parseWhileStmt(sym, stmt.get());
+        std::unique_ptr<WhileStmt> stmt(new WhileStmt(cs));
+        cs->addStmt(std::move(stmt));
+        parseWhileStmt(sym, stmt.get());
       }
       break;
 
     case TOK_FOR:
       {
-	std::unique_ptr<ForStmt> stmt(new ForStmt(cs));
-	cs->addStmt(std::move(stmt));
-	parseForStmt(sym, stmt.get());
+        std::unique_ptr<ForStmt> stmt(new ForStmt(cs));
+        cs->addStmt(std::move(stmt));
+        parseForStmt(sym, stmt.get());
       }
       break;
 
     case TOK_SWITCH:
       {
-	std::unique_ptr<SwitchStmt> stmt(new SwitchStmt(cs));
-	cs->addStmt(std::move(stmt));
-	parseSwitchStmt(sym, stmt.get());
+        std::unique_ptr<SwitchStmt> stmt(new SwitchStmt(cs));
+        cs->addStmt(std::move(stmt));
+        parseSwitchStmt(sym, stmt.get());
       }
       break;
 
     case TOK_BREAK:
       {
-	std::unique_ptr<BreakStmt> stmt(new BreakStmt(cs));
-	cs->addStmt(std::move(stmt));
-	nextSignificantToken(sym);
-	if(sym.getToken() != TOK_SEMICOLON) {
-	  storeError("WTF after break stmt", sym);
-	  consumeObject(sym);
-	}
+        std::unique_ptr<BreakStmt> stmt(new BreakStmt(cs));
+        cs->addStmt(std::move(stmt));
+        nextSignificantToken(sym);
+        if(sym.getToken() != TOK_SEMICOLON) {
+          storeError("WTF after break stmt", sym);
+          consumeObject(sym);
+        }
       }
       break;
 
     case TOK_CONTINUE:
       {
-	std::unique_ptr<ContinueStmt> stmt(new ContinueStmt(cs));
-	cs->addStmt(std::move(stmt));
-	nextSignificantToken(sym);
-	if(sym.getToken() != TOK_SEMICOLON) {
-	  storeError("WTF after continue stmt", sym);
-	  consumeObject(sym);
-	}
+        std::unique_ptr<ContinueStmt> stmt(new ContinueStmt(cs));
+        cs->addStmt(std::move(stmt));
+        nextSignificantToken(sym);
+        if(sym.getToken() != TOK_SEMICOLON) {
+          storeError("WTF after continue stmt", sym);
+          consumeObject(sym);
+        }
       }
       break;
 
     case TOK_RETURN:
       {
-	std::unique_ptr<ReturnStmt> ast_stmt(new ReturnStmt(cs));
-	ReturnStmt* stmt = ast_stmt.get();
-	cs->addStmt(std::move(ast_stmt));
-	nextSignificantToken(sym);
-	if(sym.getToken() == TOK_IDENTIFIER ||
-	   sym.getToken() == TOK_NUM_LIT ||
-	   sym.getToken() == TOK_STR_LIT ||
-	   sym.getToken() == TOK_CHAR_LIT) {
-	  // TODO change this to get an expr instead
-	  stmt->setValue(parseExpr(sym, nullptr, stmt));
-	}
+        std::unique_ptr<ReturnStmt> ast_stmt(new ReturnStmt(cs));
+        ReturnStmt* stmt = ast_stmt.get();
+        cs->addStmt(std::move(ast_stmt));
+        nextSignificantToken(sym);
+        if(sym.getToken() == TOK_IDENTIFIER ||
+           sym.getToken() == TOK_NUM_LIT ||
+           sym.getToken() == TOK_STR_LIT ||
+           sym.getToken() == TOK_CHAR_LIT) {
+          // TODO change this to get an expr instead
+          stmt->setValue(parseExpr(sym, nullptr, stmt, nullptr));
+        }
       }
       break;
 
     case TOK_ENUM:
-      parseEnum(sym, cs);
+      // parseEnum(sym, cs); TODO: write parseEnum()
       break;
 
     case TOK_IDENTIFIER:
       {
-	std::unique_ptr<AstNode> node(parseIdStmt(sym, cs));
-	if(dynamic_cast<FunctionDecl*>(node.get())) {
-	  std::unique_ptr<FunctionDecl> ast_fd(dynamic_cast<FunctionDecl*>(node.release()));
-	  cs->addOwnedFunction(std::move(ast_fd), AM_VOID);
-	  break;
-	}
-	if(dynamic_cast<Stmt*>(node.get())) {
-	  std::unique_ptr<Stmt> ast_stmt(dynamic_cast<Stmt*>(node.release()));
-	  cs->addStmt(std::move(ast_stmt));
-	  break;
-	}
-	storeError("Unknown ID stmt", sym);
-	consumeObject(sym);
-	return;
+        std::unique_ptr<AstNode> node(parseIdStmt(sym, cs));
+        if(dynamic_cast<FunctionDecl*>(node.get())) {
+          std::unique_ptr<FunctionDecl> ast_fd(dynamic_cast<FunctionDecl*>(node.release()));
+          cs->addOwnedFunction(std::move(ast_fd), AM_VOID);
+          break;
+        }
+        if(dynamic_cast<Stmt*>(node.get())) {
+          std::unique_ptr<Stmt> ast_stmt(dynamic_cast<Stmt*>(node.release()));
+          cs->addStmt(std::move(ast_stmt));
+          break;
+        }
+        storeError("Unknown ID stmt", sym);
+        consumeObject(sym);
+        return;
       }
     default:
       storeError("WTF in compound stmt", sym);
@@ -606,7 +606,7 @@ void Parser::parseCompoundStmt(Symbol& sym, CompoundStmt* cs) {
 }
 
 std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
-					Stmt* owner) {
+                                        ScopeCreator* owner, Expr* parentExpr) {
   std::unique_ptr<Expr> ret;
   std::string identifier = "";
   std::string literal = "";
@@ -650,7 +650,7 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
       break;
     }
     nextSignificantToken(sym);
-  } 
+  }
 
   // get pre-identifier ops
   OperationType preOp = OP_VOID;
@@ -720,42 +720,42 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   if(identifier != "") {
     // this is a function call or a variable
     if(sym.getToken() == TOK_OPEN_PAREN) {
-      FunctionDecl* funcDecl = owner->findScope()->findFunctionDecl(identifier);
-      std::unique_ptr<FunctionCallExpr> func(new FunctionCallExpr(owner, funcDecl));
+      FunctionDecl* funcDecl = owner->findFunctionDecl(identifier);
+      std::unique_ptr<FunctionCallExpr> func(new FunctionCallExpr(owner, parentExpr, funcDecl));
       nextSignificantToken(sym);
       while(true) {
-	// grab args seperated by commas and ending in a close paren
-	std::unique_ptr<Expr> arg = parseExpr(sym, nullptr, func.get());
-	func->addArg(std::move(arg));
-	if(sym.getToken() == TOK_COMMA) {
-	  nextSignificantToken(sym);
-	  continue;
-	}
-	else if(sym.getToken() == TOK_CLOSE_PAREN) {
-	  nextSignificantToken(sym);
-	  break;
-	}
-	else {
-	  storeError("Unexpected token in argument", sym);
-	  consumeObject(sym);
-	  return std::unique_ptr<Expr>(nullptr);
-	}
+        // grab args seperated by commas and ending in a close paren
+        std::unique_ptr<Expr> arg = parseExpr(sym, nullptr, owner, func.get());
+        func->addArg(std::move(arg));
+        if(sym.getToken() == TOK_COMMA) {
+          nextSignificantToken(sym);
+          continue;
+        }
+        else if(sym.getToken() == TOK_CLOSE_PAREN) {
+          nextSignificantToken(sym);
+          break;
+        }
+        else {
+          storeError("Unexpected token in argument", sym);
+          consumeObject(sym);
+          return std::unique_ptr<Expr>(nullptr);
+        }
       }
       ret = std::move(func);
     }
     else {
-      ret = std::make_unique<VarInstanceExpr>(owner, owner->findVar(identifier));
+      ret = std::make_unique<VarInstanceExpr>(owner, parentExpr, owner->findVarDecl(identifier));
     }
   }
   else if(literal != "") {
     // this is a literal
-    ret = std::make_unique<LiteralExpr>(owner, literal, literalKind);
+    ret = std::make_unique<LiteralExpr>(owner, parentExpr, literal, literalKind);
   }
   else if(sym.getToken() == TOK_OPEN_PAREN) {
     // this is a grouped expression
     nextSignificantToken(sym);
-    std::unique_ptr<GroupedExpr> group(new GroupedExpr(owner, nullptr));
-    std::unique_ptr<Expr> body = parseExpr(sym, nullptr, group.get());
+    std::unique_ptr<GroupedExpr> group(new GroupedExpr(owner, parentExpr, nullptr));
+    std::unique_ptr<Expr> body = parseExpr(sym, nullptr, owner, group.get());
     if(sym.getToken() != TOK_CLOSE_PAREN) {
       storeError("Grouped expression must end in a close paren", sym);
       consumeObject(sym);
@@ -764,10 +764,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
     group->setBody(std::move(body));
     ret = std::move(group);
   }
-    
+
   // apply the preOp if there was one
   if(preOp != OP_VOID) {
-    ret = std::make_unique<UnaryOperationExpr>(owner, std::move(ret), preOp);
+    ret = std::make_unique<UnaryOperationExpr>(owner, parentExpr, std::move(ret), preOp);
   }
 
   // get postop stuff is there is any
@@ -788,12 +788,12 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
 
   // apply the postOp if there was one
   if(postOp != OP_VOID) {
-    ret = std::make_unique<UnaryOperationExpr>(owner, std::move(ret), preOp);
+    ret = std::make_unique<UnaryOperationExpr>(owner, parentExpr, std::move(ret), preOp);
   }
 
   // if this is part of a bianry expr, get the other part recursivly
   // It should be noted that when an expr is added as an operand, that expr's
-  // owner is changed to be the binary expr
+  // parentExpr is changed to be the binary expr
   switch(sym.getToken()) {
   case TOK_EOF:
     fatalError("Unexpected EOF", sym);
@@ -801,9 +801,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_ASSIGN:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_ASSIGN));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -811,9 +812,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_ADD:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_ADD));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_ADD));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -822,9 +824,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_SUB:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_SUB));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_SUB));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -832,9 +835,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_MUL:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_MUL));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_MUL));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -842,9 +846,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_DIV:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_DIV));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_DIV));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -852,9 +857,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_MOD:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_MOD));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_MOD));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -862,9 +868,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_ADD_ASSIGN:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_ADD_ASSIGN));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_ADD_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -872,9 +879,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_SUB_ASSIGN:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_SUB_ASSIGN));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_SUB_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -882,9 +890,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_MUL_ASSIGN:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_MUL_ASSIGN));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_MUL_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -892,9 +901,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_DIV_ASSIGN:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_DIV_ASSIGN));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_DIV_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -902,9 +912,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_MOD_ASSIGN:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_MOD_ASSIGN));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_MOD_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -912,9 +923,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_AND:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_AND));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_AND));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -922,9 +934,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_OR:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_OR));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_OR));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -932,9 +945,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_XOR:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_XOR));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_XOR));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -942,9 +956,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_LSH:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_LSH));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_LSH));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -952,9 +967,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_RSH:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_RSH));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_RSH));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -962,9 +978,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_AND_ASSIGN:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_AND_ASSIGN));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_AND_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -972,9 +989,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_OR_ASSIGN:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_OR_ASSIGN));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_OR_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -982,9 +1000,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_XOR_ASSIGN:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_XOR_ASSIGN));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_XOR_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -992,9 +1011,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_LSH_ASSIGN:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_LSH_ASSIGN));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_LSH_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -1002,9 +1022,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_RSH_ASSIGN:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_RSH_ASSIGN));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_RSH_ASSIGN));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -1012,9 +1033,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_EQ:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_EQ));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_EQ));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -1022,9 +1044,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_NEQ:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_NEQ));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_NEQ));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -1032,9 +1055,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_LOGI_AND:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_LOGI_AND));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_LOGI_AND));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -1042,9 +1066,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_LOGI_OR:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_LOGI_OR));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_LOGI_OR));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -1052,9 +1077,10 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   case TOK_LOGI_XOR:
     {
       nextSignificantToken(sym);
-      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, std::move(ret),
-								       nullptr, OP_LOGI_XOR));
-      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, boe.get());
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_LOGI_XOR));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
       boe->setRightOperand(std::move(rOperand));
       ret = std::move(boe);
       break;
@@ -1078,7 +1104,7 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
     return std::unique_ptr<Expr>(nullptr);
   }
 }
-  
+
 
 void Parser::parseIfStmt(Symbol& sym, IfStmt* stmt) {
   nextSignificantToken(sym);
@@ -1090,7 +1116,7 @@ void Parser::parseIfStmt(Symbol& sym, IfStmt* stmt) {
 
   // get condition
   nextSignificantToken(sym);
-  std::unique_ptr<Expr> if_expr(parseExpr(sym, nullptr, stmt));
+  std::unique_ptr<Expr> if_expr(parseExpr(sym, nullptr, stmt, nullptr));
   stmt->setCondition(std::move(if_expr));
 
   if(sym.getToken() != TOK_CLOSE_PAREN) {
@@ -1158,7 +1184,7 @@ void Parser::parseWhileStmt(Symbol& sym, WhileStmt* stmt) {
 
   // get condition
   nextSignificantToken(sym);
-  std::unique_ptr<Expr> while_expr(parseExpr(sym, nullptr, stmt));
+  std::unique_ptr<Expr> while_expr(parseExpr(sym, nullptr, stmt, nullptr));
   stmt->setCondition(std::move(while_expr));
 
   if(sym.getToken() != TOK_CLOSE_PAREN) {
@@ -1221,7 +1247,7 @@ void Parser::parseForStmt(Symbol& sym, ForStmt* stmt) {
     consumeObject(sym);
     return;
   default:
-    std::unique_ptr<Expr> for_stopExpr(parseExpr(sym, nullptr, stmt));
+    std::unique_ptr<Expr> for_stopExpr(parseExpr(sym, nullptr, stmt, nullptr));
     stmt->setStop(std::move(for_stopExpr));
   }
 
@@ -1234,10 +1260,10 @@ void Parser::parseForStmt(Symbol& sym, ForStmt* stmt) {
   case TOK_SEMICOLON:
     break;
   default:
-    std::unique_ptr<Expr> for_stepExpr(parseExpr(sym, nullptr, stmt));
+    std::unique_ptr<Expr> for_stepExpr(parseExpr(sym, nullptr, stmt, nullptr));
     stmt->setStep(std::move(for_stepExpr));
   }
-  
+
   if(sym.getToken() != TOK_CLOSE_PAREN) {
     storeError("Expected close paren", sym);
   }
@@ -1266,7 +1292,7 @@ void Parser::parseSwitchStmt(Symbol& sym, SwitchStmt* stmt) {
   }
 
   nextSignificantToken(sym);
-  std::unique_ptr<Expr> switch_expr(parseExpr(sym, nullptr, stmt));
+  std::unique_ptr<Expr> switch_expr(parseExpr(sym, nullptr, stmt, nullptr));
   stmt->setCondition(std::move(switch_expr));
 
   if(sym.getToken() != TOK_CLOSE_PAREN) {
@@ -1288,7 +1314,7 @@ void Parser::parseSwitchStmt(Symbol& sym, SwitchStmt* stmt) {
   return;
 }
 
-std::unique_ptr<AstNode> Parser::parseIdStmt(Symbol& sym, Stmt* owner) {
+std::unique_ptr<AstNode> Parser::parseIdStmt(Symbol& sym, ScopeCreator* owner) {
   bool qtStatic = false;
   bool qtConst = false;
   if(sym.getToken() != TOK_IDENTIFIER) {
@@ -1302,7 +1328,7 @@ std::unique_ptr<AstNode> Parser::parseIdStmt(Symbol& sym, Stmt* owner) {
   case TOK_EOF:
     fatalError("Unexpected EOF", sym);
     return std::unique_ptr<Stmt>(nullptr);
-   
+
   case TOK_LE:
   case TOK_GE:
   case TOK_RSH:
@@ -1323,9 +1349,9 @@ std::unique_ptr<AstNode> Parser::parseIdStmt(Symbol& sym, Stmt* owner) {
   case TOK_XOR:
   case TOK_LT:
   case TOK_GT:
-    
+
   case TOK_OPEN_PAREN:
-    
+
   case TOK_DOT:
   case TOK_ASSIGN:
   case TOK_RSH_ASSIGN:
@@ -1339,7 +1365,7 @@ std::unique_ptr<AstNode> Parser::parseIdStmt(Symbol& sym, Stmt* owner) {
   case TOK_DIV_ASSIGN:
   case TOK_MOD_ASSIGN:
     // any of the above make this an expression
-    return parseExpr(sym, &first, owner);
+    return parseExpr(sym, &first, owner, nullptr);
 
   case TOK_STATIC:
     // static possibly followed by const
@@ -1363,47 +1389,47 @@ std::unique_ptr<AstNode> Parser::parseIdStmt(Symbol& sym, Stmt* owner) {
       nextSignificantToken(sym);
     }
     // fall thru to getting type
-    
+
   case TOK_IDENTIFIER:
     // either var decl stmt or func decl
     {
-      Type* t = module.findType(first);
-      
+      Type* t = module.findTypeDecl(first)->getType();
+
       std::string second = *sym.getSymbolData()->getAsString();
       nextSignificantToken(sym);
       switch(sym.getToken()) {
       case TOK_EOF:
-	fatalError("Unexpected EOF", sym);
-	return std::unique_ptr<Stmt>(nullptr);
+        fatalError("Unexpected EOF", sym);
+        return std::unique_ptr<Stmt>(nullptr);
       case TOK_COMMA:
       case TOK_SEMICOLON:
       case TOK_ASSIGN:
-	{
-	  // var decl stmt
-	  std::unique_ptr<VarDeclStmt> ret(new VarDeclStmt(owner));
-	  std::shared_ptr<QualType> qt(new QualType(t));
-	  qt->setConst(qtConst);
-	  qt->setStatic(qtStatic);
-	  ret->setType(std::move(qt));
-	  parseVarDeclStmt(sym, ret.get(), &second);
-	  return ret;
-	}
+        {
+          // var decl stmt
+          std::unique_ptr<VarDeclStmt> ret(new VarDeclStmt(owner));
+          std::shared_ptr<QualType> qt(new QualType(t));
+          qt->setConst(qtConst);
+          qt->setStatic(qtStatic);
+          ret->setType(std::move(qt));
+          parseVarDeclStmt(sym, ret.get(), &second);
+          return ret;
+        }
       case TOK_OPEN_PAREN:
-	{
-	  // function decl
-	  std::unique_ptr<FunctionDecl> ret(new FunctionDecl(owner->findScope()));
-	  std::unique_ptr<QualType> qt(new QualType(t));
-	  qt->setConst(qtConst);
-	  qt->setStatic(qtStatic);
-	  ret->setReturnType(std::move(qt));
-	  ret->setName(std::make_unique<std::string>(second));
-	  parseFunctionDeclTop(sym, ret.get());
-	  return ret;
-	}
+        {
+          // function decl
+          std::unique_ptr<FunctionDecl> ret(new FunctionDecl(owner));
+          std::unique_ptr<QualType> qt(new QualType(t));
+          qt->setConst(qtConst);
+          qt->setStatic(qtStatic);
+          ret->setReturnType(std::move(qt));
+          ret->setName(std::make_unique<std::string>(second));
+          parseFunctionDeclTop(sym, ret.get());
+          return ret;
+        }
       default:
-	storeError("WTF in unknown stmt", sym);
-	consumeObject(sym);
-	return std::unique_ptr<Stmt>(nullptr);
+        storeError("WTF in unknown stmt", sym);
+        consumeObject(sym);
+        return std::unique_ptr<Stmt>(nullptr);
       }
     }
   default:
@@ -1414,9 +1440,9 @@ std::unique_ptr<AstNode> Parser::parseIdStmt(Symbol& sym, Stmt* owner) {
 }
 
 void Parser::parseVarDeclStmt(Symbol& sym, VarDeclStmt* vds,
-			      std::string* id) {
+                              std::string* id) {
   std::shared_ptr<QualType> qt(vds->getType());
-  std::unique_ptr<VarDecl> vd(new VarDecl(vds->findScope(), std::move(qt)));
+  std::unique_ptr<VarDecl> vd(new VarDecl(vds->getOwner(), std::move(qt)));
   if(id) {
     vd->setName(std::make_unique<std::string>(*id));
   }
@@ -1438,11 +1464,11 @@ void Parser::parseVarDeclStmt(Symbol& sym, VarDeclStmt* vds,
     case TOK_COMMA:
       nextSignificantToken(sym);
       if(sym.getToken() != TOK_IDENTIFIER) {
-	storeError("Comma in var decl statement but no following decl", sym);
-	consumeObject(sym);
-	return;
+        storeError("Comma in var decl statement but no following decl", sym);
+        consumeObject(sym);
+        return;
       }
-      vd = std::make_unique<VarDecl>(vds->findScope(), std::move(qt));
+      vd = std::make_unique<VarDecl>(vds->getOwner(), std::move(qt));
       vd->setName(std::make_unique<std::string>(*sym.getSymbolData()->getAsString()));
       vds->addVar(std::move(vd));
       nextSignificantToken(sym);
@@ -1477,7 +1503,7 @@ void Parser::nextSignificantToken(Symbol& sym) {
   do {
     sym = lex.next();
   } while(sym.getToken() == TOK_WHITESPACE ||
-	  sym.getToken() == TOK_COMMENT);
+          sym.getToken() == TOK_COMMENT);
   return;
 }
 
@@ -1494,11 +1520,6 @@ void Parser::fatalError(const std::string& errstr, const Symbol& sym) {
 void Parser::storeWarn(const std::string& errstr, const Symbol& sym) {
   ParserError warn(errstr, filename, sym);
   warnings.push_back(warn);
-  return;
-}
-
-void Parser::setFile(const std::string& filename) {
-  this->filename = filename;
   return;
 }
 

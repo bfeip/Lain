@@ -30,13 +30,14 @@ private:
   void parseFunctionDeclParams(Symbol& sym, FunctionDecl* fd);
 
   void parseCompoundStmt(Symbol& sym, CompoundStmt* cs);
-  std::unique_ptr<Expr> parseExpr(Symbol& sym, std::string* id, Stmt* owner);
+  std::unique_ptr<Expr> parseExpr(Symbol& sym, std::string* id,
+				  ScopeCreator* owner, Expr* parentExpr);
   void parseIfStmt(Symbol& sym, IfStmt* stmt);
   void parseElseStmt(Symbol& sym, ElseStmt* stmt);
   void parseWhileStmt(Symbol& sym, WhileStmt* stmt);
   void parseForStmt(Symbol& sym, ForStmt* stmt);
   void parseSwitchStmt(Symbol& sym, SwitchStmt* stmt);
-  std::unique_ptr<AstNode> parseIdStmt(Symbol& sym, Stmt* owner);
+  std::unique_ptr<AstNode> parseIdStmt(Symbol& sym, ScopeCreator* owner);
   
   void parseVarDeclStmt(Symbol& sym, VarDeclStmt* vds, std::string* id);
 
@@ -47,8 +48,8 @@ private:
   void fatalError(const std::string& errstr, const Symbol& sym);
   void storeWarn(const std::string& errstr, const Symbol& sym);
 public:
-  Parser() = default;
-  void setFile(const std::string& filename);
+  Parser() = delete;
+  Parser(const std::string& filename) : filename(filename), lex(filename) {}
   void parse();
   const Module* getModule() const { return &module; }
 };

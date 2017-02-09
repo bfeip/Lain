@@ -11,8 +11,8 @@ private:
   OperationType op;
 public:
   UnaryOperationExpr() = delete;
-  UnaryOperationExpr(AstNode* owner, std::unique_ptr<Expr>&& expr, OperationType ot) :
-    Stmt(owner), Expr(owner), operand(std::move(expr)), op(ot) {}
+  UnaryOperationExpr(ScopeCreator* owner, Expr* pe, std::unique_ptr<Expr>&& expr, OperationType ot) :
+    Stmt(owner), Expr(owner, pe), operand(std::move(expr)), op(ot) {}
   virtual ~UnaryOperationExpr() = default;
 
   Expr* getOperand() { return operand.get(); }

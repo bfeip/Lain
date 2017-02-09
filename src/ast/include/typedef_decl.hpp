@@ -11,7 +11,7 @@ public:
 
   Type* getDefinition() { return definition; }
   const Type* getDefinition() const { return definition; }
-  void setDefinition(const std::string& defname);
+  void setDefinition(Type* def) { definition = def; }
 };
 
 #endif

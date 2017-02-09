@@ -2,18 +2,19 @@
 #define FUNCTION_DECL_HPP
 
 #include "ast_shared.hpp"
+#include "scope_creator.hpp"
 #include "qual_type.hpp"
 #include "var_decl.hpp"
 #include "compound_stmt.hpp"
 
-class FunctionDecl : virtual public Decl {
+class FunctionDecl : virtual public Decl, virtual public ScopeCreator {
 private:
   std::unique_ptr<QualType> returnType;
   std::vector<std::unique_ptr<VarDecl>> params;
   std::unique_ptr<CompoundStmt> body;
 public:
   FunctionDecl() = delete;
-  FunctionDecl(ScopeCreator* sc) : Decl(sc) {}
+  FunctionDecl(ScopeCreator* sc) : Decl(sc), ScopeCreator(sc) {}
   virtual ~FunctionDecl() = default;
   
   bool isDefined() const { return body != nullptr; }

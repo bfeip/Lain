@@ -4,7 +4,7 @@
 class BreakStmt : virtual public Stmt {
 public:
   BreakStmt() = delete;
-  BreakStmt(AstNode* p) : Stmt(p) {}
+  BreakStmt(ScopeCreator* p) : Stmt(p) {}
   virtual ~BreakStmt() = default;
 };
 

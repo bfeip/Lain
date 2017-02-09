@@ -15,11 +15,11 @@ private:
   std::unordered_map<std::unique_ptr<VarDecl>, AccessModifier> memberVars;
 public:
   ClassDecl() = delete;
-  ClassDecl(ScopeCreator* sc) : Decl(sc), TypeDecl(sc), ScopeCreator() {}
+  ClassDecl(ScopeCreator* sc) : Decl(sc), TypeDecl(sc), ScopeCreator(sc) {}
   virtual ~ClassDecl() = default;
 
-  const std::pair<VarDecl*, AccessModifier>& findMember(const std::string& name);
-  const std::pair<const VarDecl*, AccessModifier>& findMember(const std::string& name) const;
+  const std::pair<VarDecl*, AccessModifier> findMember(const std::string& name);
+  const std::pair<const VarDecl*, AccessModifier> findMember(const std::string& name) const;
   void addMember(std::unique_ptr<VarDecl>&& decl, AccessModifier am) {
     memberVars.emplace(std::move(decl), am);
   }

@@ -1,12 +1,12 @@
 #ifndef RETURN_STMT_HPP
 #define RETURN_STMT_HPP
 
-class ReturnStmt : virtual public Stmt {
+class ReturnStmt : virtual public Stmt, virtual public ScopeCreator /* ikr */ {
 private:
   std::unique_ptr<Expr> value;
 public:
   ReturnStmt() = delete;
-  ReturnStmt(AstNode* p) : Stmt(p) {}
+  ReturnStmt(ScopeCreator* p) : Stmt(p), ScopeCreator(p) {}
   virtual ~ReturnStmt() = default;
 
   Expr* getValue() { return value.get(); }

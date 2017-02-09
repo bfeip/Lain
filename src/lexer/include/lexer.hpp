@@ -6,12 +6,12 @@
 
 class Lexer {
 private:
-  std::ifstream& src;
+  std::ifstream src;
   int line;
   int col;
 
   char pop();
-  char peek() const;
+  char peek();
   
   std::string consumeLineComment();
   std::string consumeBlockComment();
@@ -20,7 +20,12 @@ private:
   std::string consumeNumLit();
   std::string consumeIdentifier();
 public:
-  Lexer(std::ifstream& src) : src(src), line(1), col(1) {}
+  Lexer(std::string filename) : src(filename), line(1), col(1) {
+    if(!src) {
+      // fuck
+      exit(-2);
+    }
+  }
   Symbol next();
 };
 

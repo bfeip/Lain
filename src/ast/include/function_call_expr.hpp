@@ -7,7 +7,8 @@ private:
   std::vector<std::unique_ptr<Expr>> args;
 public:
   FunctionCallExpr() = delete;
-  FunctionCallExpr(AstNode* p, FunctionDecl* fd) : Stmt(p), Expr(p), func(fd) {}
+  FunctionCallExpr(ScopeCreator* owner, Expr* pe, FunctionDecl* fd) :
+    Stmt(owner), Expr(owner, pe), func(fd) {}
   virtual ~FunctionCallExpr() = default;
 
   FunctionDecl* getFunc() { return func; }

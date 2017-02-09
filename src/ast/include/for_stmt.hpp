@@ -1,7 +1,7 @@
 #ifndef FOR_STMT_HPP
 #define FOR_STMT_HPP
 
-class ForStmt : virtual public Stmt {
+class ForStmt : virtual public Stmt, virtual public ScopeCreator {
 private:
   std::unique_ptr<Stmt> start;
   std::unique_ptr<Expr> stop;
@@ -9,7 +9,7 @@ private:
   std::unique_ptr<CompoundStmt> body;
 public:
   ForStmt() = delete;
-  ForStmt(AstNode* p) : Stmt(p) {}
+  ForStmt(ScopeCreator* p) : Stmt(p), ScopeCreator(p) {}
   virtual ~ForStmt() = default;
 
   Stmt* getStart() { return start.get(); }

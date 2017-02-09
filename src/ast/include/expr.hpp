@@ -7,9 +7,11 @@
 class Expr : virtual public Stmt {
 private:
   std::unique_ptr<QualType> type;
+
+  Expr* parentExpr;
 public:
   Expr() = delete;
-  Expr(AstNode* p) : Stmt(p) {}
+  Expr(ScopeCreator* owner, Expr* pe) : Stmt(owner), parentExpr(pe) {}
   virtual ~Expr() = default;
   
   QualType* getType() { return type.get(); };

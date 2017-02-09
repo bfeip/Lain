@@ -3,7 +3,10 @@
 
 #include "ast_shared.hpp"
 
+#include "stmt.hpp"
+
 #include "scope_creator.hpp"
+#include "type_decl.hpp"
 #include "typedef_decl.hpp"
 #include "class_decl.hpp"
 #include "function_decl.hpp"
@@ -35,14 +38,10 @@ private:
 		    * its siblings, any of its parent nodes, or any top level node */
   std::vector<std::unique_ptr<VarDecl>> globals;
 public:
-  Module() = default;
+  Module() : ScopeCreator(this) {}
 
-  Decl* findDecl(const std::string& name);
-  Type* findType(const std::string& name);
-
-  const std::vector<VarDecl*>& getGlobals();
-  void addGlobal(std::unique_ptr<VarDecl> vd) { globals.emplace_back(std::move(vd)); }
-
+  void addGlobal(std::unique_ptr<VarDecl> global);
+  
   void resolveTypes();
 };
 
