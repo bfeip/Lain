@@ -9,7 +9,7 @@ class Parser {
 private:
   std::string filename;
   Lexer lex;
-  Module module;
+  std::unique_ptr<Module> module;
   std::vector<ParserError> errors;
   std::vector<ParserError> warnings;
 
@@ -49,9 +49,11 @@ private:
   void storeWarn(const std::string& errstr, const Symbol& sym);
 public:
   Parser() = delete;
-  Parser(const std::string& filename) : filename(filename), lex(filename) {}
+  Parser(const std::string& filename) : filename(filename), lex(filename),
+					module(new Module(filename)) {}
   void parse();
-  const Module* getModule() const { return &module; }
+  const Module* getModule() const { return module.get(); }
+  std::unique_ptr<Module> stripModule();
 };
 
 #endif

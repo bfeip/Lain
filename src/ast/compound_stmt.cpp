@@ -8,7 +8,7 @@ const std::vector<Stmt*> CompoundStmt::getStmts() {
   return ret;
 }
 
-const std::vector<const Stmt*> CompoundStmt::setStmts() const {
+const std::vector<const Stmt*> CompoundStmt::getStmts() const {
     std::vector<const Stmt*> ret;
     for(const std::unique_ptr<Stmt>& stmt : stmts) {
       ret.push_back(stmt.get());

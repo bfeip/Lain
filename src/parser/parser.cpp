@@ -6,13 +6,13 @@ void Parser::parseTop() {
   while(sym.getToken() != TOK_EOF) {
     switch(sym.getToken()) {
     case TOK_CLASS:
-      parseClassTop(sym, dynamic_cast<ScopeCreator*>(&module));
+      parseClassTop(sym, dynamic_cast<ScopeCreator*>(module.get()));
       break;
     case TOK_TYPEDEF:
-      parseTypedef(sym, dynamic_cast<ScopeCreator*>(&module));
+      parseTypedef(sym, dynamic_cast<ScopeCreator*>(module.get()));
       break;
     case TOK_IDENTIFIER:
-      parseIdDecl(sym, dynamic_cast<ScopeCreator*>(&module));
+      parseIdDecl(sym, dynamic_cast<ScopeCreator*>(module.get()));
       break;
     default:
       storeError("WTF at top level", sym);
@@ -130,7 +130,7 @@ void Parser::parseClassInheritance(Symbol& sym, ClassDecl* cd) {
 
     // link this class to its parents and vice versa
     const std::string& inhername = *sym.getSymbolData()->getAsString();
-    Type* inher = module.findTypeDecl(inhername)->getType();
+    Type* inher = module->findTypeDecl(inhername)->getType();
     cd->getType()->addParent(inher, am);
     inher->addChild(cd->getType(), am);
 
@@ -206,7 +206,7 @@ void Parser::parseClassVarInstatiation(Symbol& sym, ClassDecl* cd) {
     parseVarDeclStmt(sym, vds.get(), nullptr);
     std::vector<std::unique_ptr<VarDecl>>& vars = vds->stripVars();
     for(std::unique_ptr<VarDecl>& e : vars) {
-      module.addGlobal(std::move(e));
+      module->addGlobal(std::move(e));
     }
     return;
   }
@@ -286,7 +286,7 @@ void Parser::parseIdDecl(Symbol& sym, ScopeCreator* owner) {
 
   // get name of base type and construct QualType
   const std::string& typeName = *sym.getSymbolData()->getAsString();
-  Type* t = module.findTypeDecl(typeName)->getType();
+  Type* t = module->findTypeDecl(typeName)->getType();
   std::unique_ptr<QualType> qt(new QualType(t));
   qt->setStatic(qtStatic);
   qt->setConst(qtConst);
@@ -326,7 +326,7 @@ void Parser::parseIdDecl(Symbol& sym, ScopeCreator* owner) {
         // gloabal var decl stmt
         std::vector<std::unique_ptr<VarDecl>>& vars = vds->stripVars();
         for(std::unique_ptr<VarDecl>& e : vars) {
-          module.addGlobal(std::move(e));
+          module->addGlobal(std::move(e));
         }
       }
       else {
@@ -404,7 +404,7 @@ void Parser::parseFunctionDeclParams(Symbol& sym, FunctionDecl* fd) {
 
     // get name of base type
     const std::string& typeName = *sym.getSymbolData()->getAsString();
-    Type* t = module.findTypeDecl(typeName)->getType();
+    Type* t = module->findTypeDecl(typeName)->getType();
     std::shared_ptr<QualType> qt(new QualType(t));
     qt->setConst(qtConst);
     qt->setStatic(qtStatic);
@@ -1393,7 +1393,7 @@ std::unique_ptr<AstNode> Parser::parseIdStmt(Symbol& sym, ScopeCreator* owner) {
   case TOK_IDENTIFIER:
     // either var decl stmt or func decl
     {
-      Type* t = module.findTypeDecl(first)->getType();
+      Type* t = module->findTypeDecl(first)->getType();
 
       std::string second = *sym.getSymbolData()->getAsString();
       nextSignificantToken(sym);
@@ -1526,4 +1526,8 @@ void Parser::storeWarn(const std::string& errstr, const Symbol& sym) {
 void Parser::parse() {
   parseTop();
   return;
+}
+
+std::unique_ptr<Module> Parser::stripModule() {
+  return std::move(module);
 }

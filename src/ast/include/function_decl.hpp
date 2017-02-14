@@ -23,8 +23,8 @@ public:
   const QualType* getReturnType() const { return returnType.get(); }
   void setReturnType(std::unique_ptr<QualType> qt) { returnType = std::move(qt); }
 
-  const std::vector<VarDecl*>& getParams();
-  const std::vector<const VarDecl*>& getParams() const;
+  const std::vector<VarDecl*> getParams();
+  const std::vector<const VarDecl*> getParams() const;
   void addParam(std::unique_ptr<VarDecl> param) { params.emplace_back(std::move(param)); }
   
   CompoundStmt* getBody() { return body.get(); }

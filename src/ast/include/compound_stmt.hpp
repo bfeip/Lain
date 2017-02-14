@@ -14,7 +14,7 @@ public:
   virtual ~CompoundStmt() = default;
 
   const std::vector<Stmt*> getStmts();
-  const std::vector<const Stmt*> setStmts() const;
+  const std::vector<const Stmt*> getStmts() const;
   void addStmt(std::unique_ptr<Stmt> stmt) { stmts.emplace_back(std::move(stmt)); }
 };
 
