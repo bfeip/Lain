@@ -57,6 +57,7 @@ enum Token {
 
   TOK_IDENTIFIER,
 
+  TOK_USING,
   TOK_IF,
   TOK_ELSE,
   TOK_WHILE,

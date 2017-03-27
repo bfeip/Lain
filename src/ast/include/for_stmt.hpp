@@ -26,7 +26,7 @@ public:
 
   CompoundStmt* getBody() { return body.get(); }
   const CompoundStmt* getBody() const { return body.get(); }
-  void setBody(std::unique_ptr<CompoundStmt> cs) { cs = std::move(cs); }
+  void setBody(std::unique_ptr<CompoundStmt> cs) { body = std::move(cs); }
 };
 
 #endif

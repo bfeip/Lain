@@ -1,0 +1,16 @@
+bool falsey() {
+  return 0;
+}
+
+bool truthy() {
+  return 1;
+}
+
+int main() {
+  bool f;
+  bool t;
+  f = falsey();
+  t = truthy();
+
+  return 0;
+}

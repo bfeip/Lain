@@ -4,19 +4,21 @@
 class ScopeCreator;
 class Decl;
 class FunctionDecl;
-class TypeDecl;
+class Type;
 class VarDecl;
 class CompoundStmt;
 #include "ast_shared.hpp"
 #include "access_modifier.hpp"
 #include "ast_node.hpp"
 
+#include "llvm/ADT/StringMap.h"
+
 class ScopeCreator : virtual public AstNode {
 private:
   ScopeCreator* owner; // redundant in most cases but helpful
   
   std::unordered_map<std::unique_ptr<FunctionDecl>, AccessModifier> ownedFDecls;
-  std::unordered_map<std::unique_ptr<TypeDecl>, AccessModifier> ownedTDecls;
+  std::unordered_map<std::unique_ptr<Type>, AccessModifier> ownedTypes;
   std::vector<VarDecl*> ownedVars;
 public:
   ScopeCreator() = delete;
@@ -24,28 +26,28 @@ public:
   virtual ~ScopeCreator() = default;
   
   const std::vector<FunctionDecl*> getFunctionDecls();
-  const std::vector<TypeDecl*> getTypeDecls();
+  const std::vector<Type*> getTypes();
   const std::vector<VarDecl*>& getVarDecls() { return ownedVars; }
   
-  FunctionDecl* findFunctionDecl(const std::string& name);
-  TypeDecl* findTypeDecl(const std::string& name);
-  VarDecl* findVarDecl(const std::string& name);
+  FunctionDecl* findFunctionDecl(const std::string& name, bool external = false);
+  Type* findType(const std::string& name, bool external = false);
+  VarDecl* findVarDecl(const std::string& name, bool external = false);
   Decl* findDecl(const std::string& name);
   
   const std::vector<const FunctionDecl*> getFunctionDecls() const;   
-  const std::vector<const TypeDecl*> getTypeDecls() const;
+  const std::vector<const Type*> getTypes() const;
   const std::vector<const VarDecl*> getVarDecls() const;
   
-  const FunctionDecl* findFunctionDecl(const std::string& name) const;
-  const TypeDecl* findTypeDecl(const std::string& name) const;
-  const VarDecl* findVarDecl(const std::string& name) const;
+  const FunctionDecl* findFunctionDecl(const std::string& name, bool external = false) const;
+  const Type* findType(const std::string& name, bool external = false) const;
+  const VarDecl* findVarDecl(const std::string& name, bool external = false) const;
   const Decl* findDecl(const std::string& name) const;
   
-  void addOwnedFunction(std::unique_ptr<FunctionDecl>&& fd, AccessModifier am) {
+  void addOwnedFunction(std::unique_ptr<FunctionDecl> fd, AccessModifier am) {
     ownedFDecls.emplace(std::move(fd), am);
   }
-  void addOwnedType(std::unique_ptr<TypeDecl>&& td, AccessModifier am) {
-    ownedTDecls.emplace(std::move(td), am);
+  void addOwnedType(std::unique_ptr<Type> t, AccessModifier am) {
+    ownedTypes.emplace(std::move(t), am);
   }
   void addOwnedVar(VarDecl* vd) {
     ownedVars.push_back(vd);
@@ -53,5 +55,6 @@ public:
 };
 
 #include "function_decl.hpp"
+#include "module.hpp"
 
 #endif

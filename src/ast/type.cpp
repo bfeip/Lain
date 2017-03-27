@@ -1,10 +1,10 @@
 #include "type.hpp"
 
-int Type::nextId = 14;
+int Type::nextId = 0;
 
 const std::pair<Type*, AccessModifier>* Type::findParent(const std::string& name) {
   for(const std::pair<Type*, AccessModifier>& parent : parents) {
-    if(*parent.first->name == name) {
+    if(parent.first->name == name) {
       return &parent;
     }
   }
@@ -13,7 +13,7 @@ const std::pair<Type*, AccessModifier>* Type::findParent(const std::string& name
 
 const std::pair<Type*, AccessModifier>* Type::findChild(const std::string& name) {
   for(const std::pair<Type*, AccessModifier>& child : children) {
-    if(*child.first->name == name) {
+    if(child.first->name == name) {
       return &child;
     }
   }

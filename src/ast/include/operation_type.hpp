@@ -42,6 +42,8 @@ enum OperationType {
 
   OP_EQ,
   OP_NEQ,
+  OP_LT,
+  OP_GT,
 
   OP_LOGI_AND,
   OP_LOGI_NAND,

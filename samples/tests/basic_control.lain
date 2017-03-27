@@ -1,0 +1,22 @@
+int main() {
+  bool t = 1;
+  bool f = 0;
+  int a;
+  if(t) {
+    a = 1;
+  }
+  if(f) {
+    a = 0;
+  }
+
+  int i = 0;
+  while(i < 10) {
+    i++;
+  }
+
+  for(i = 0; i < 10; i++) {
+    a++;
+  }
+
+  return 0;
+}

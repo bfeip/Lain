@@ -24,7 +24,7 @@ public:
 
   QualType* getType() { return type.get(); }
   const QualType* getType() const { return type.get(); }
-  void setType(std::shared_ptr<QualType> qt) { type = std::move(qt); }
+  void setType(std::shared_ptr<QualType> qt) { type = qt; }
 };
 
 #include "expr.hpp"

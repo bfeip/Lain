@@ -1,6 +1,8 @@
 #ifndef TYPEDEF_DECL_HPP
 #define TYPEDEF_DECL_HPP
 
+#include "type_decl.hpp"
+
 class TypeDefDecl : virtual public TypeDecl {
 private:
   Type* definition;

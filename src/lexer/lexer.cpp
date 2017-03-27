@@ -309,8 +309,8 @@ Symbol Lexer::next() {
     }
     else {
       sym.setToken(TOK_NOT);
-      pop();
     }
+    break;
   case ',':
     sym.setAll(TOK_COMMA, line, col);
     pop();
@@ -382,7 +382,10 @@ Symbol Lexer::next() {
     else if(isalpha(c)) {
       sym.setPos(line, col);
       std::string id = consumeIdentifier();
-      if(id == "if") {
+      if(id == "using") {
+	sym.setToken(TOK_USING);
+      }
+      else if(id == "if") {
 	sym.setToken(TOK_IF);
       }
       else if(id == "else") {

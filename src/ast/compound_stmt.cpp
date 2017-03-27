@@ -15,3 +15,7 @@ const std::vector<const Stmt*> CompoundStmt::getStmts() const {
     }
     return ret;
 }
+
+void CompoundStmt::addStmt(std::unique_ptr<Stmt>&& stmt) {
+  stmts.push_back(std::move(stmt));
+}

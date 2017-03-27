@@ -5,6 +5,19 @@ void Parser::parseTop() {
   nextSignificantToken(sym);
   while(sym.getToken() != TOK_EOF) {
     switch(sym.getToken()) {
+    case TOK_USING:
+      nextSignificantToken(sym);
+      if(sym.getToken() != TOK_STR_LIT) {
+	storeError("Expected string", sym);
+	consumeObject(sym);
+	break;
+      }
+      module->addUsing(*sym.getSymbolData()->getAsString());
+      nextSignificantToken(sym);
+      if(sym.getToken() != TOK_SEMICOLON) {
+	storeError("Expected semicolon", sym);
+      }
+      break;
     case TOK_CLASS:
       parseClassTop(sym, dynamic_cast<ScopeCreator*>(module.get()));
       break;
@@ -28,7 +41,8 @@ void Parser::parseClassTop(Symbol& sym, ScopeCreator* owner) {
   std::unique_ptr<ClassDecl> ast_classdecl(new ClassDecl(owner));
   ClassDecl* classdecl = ast_classdecl.get(); // messy, but don't want to use new
   bool anon = false;
-  owner->addOwnedType(std::move(ast_classdecl), AM_VOID);
+  std::unique_ptr<Type> type(new Type(std::string(), std::move(ast_classdecl)));
+  owner->addOwnedType(std::move(type), AM_VOID);
 
   nextSignificantToken(sym);
   if(sym.getToken() == TOK_IDENTIFIER) {
@@ -130,7 +144,7 @@ void Parser::parseClassInheritance(Symbol& sym, ClassDecl* cd) {
 
     // link this class to its parents and vice versa
     const std::string& inhername = *sym.getSymbolData()->getAsString();
-    Type* inher = module->findTypeDecl(inhername)->getType();
+    Type* inher = module->findType(inhername);
     cd->getType()->addParent(inher, am);
     inher->addChild(cd->getType(), am);
 
@@ -204,7 +218,7 @@ void Parser::parseClassVarInstatiation(Symbol& sym, ClassDecl* cd) {
   if(dynamic_cast<Module*>(owner)) {
     // global variable instantation
     parseVarDeclStmt(sym, vds.get(), nullptr);
-    std::vector<std::unique_ptr<VarDecl>>& vars = vds->stripVars();
+    std::vector<std::unique_ptr<VarDecl>> vars = vds->stripVars();
     for(std::unique_ptr<VarDecl>& e : vars) {
       module->addGlobal(std::move(e));
     }
@@ -214,7 +228,7 @@ void Parser::parseClassVarInstatiation(Symbol& sym, ClassDecl* cd) {
   if(ClassDecl* owningClass = dynamic_cast<ClassDecl*>(owner)) {
     // member variable instantation
     parseVarDeclStmt(sym, vds.get(), nullptr);
-    std::vector<std::unique_ptr<VarDecl>>& vars = vds->stripVars();
+    std::vector<std::unique_ptr<VarDecl>> vars = vds->stripVars();
     for(std::unique_ptr<VarDecl>& e : vars) {
       owningClass->addMember(std::move(e), AM_VOID); // TODO add AM support
     }
@@ -235,7 +249,8 @@ void Parser::parseClassVarInstatiation(Symbol& sym, ClassDecl* cd) {
 void Parser::parseTypedef(Symbol& sym, ScopeCreator* owner) {
   std::unique_ptr<TypeDefDecl> ast_tdd(new TypeDefDecl(owner));
   TypeDefDecl* tdd = ast_tdd.get();
-  owner->addOwnedType(std::move(ast_tdd), AM_VOID);
+  std::unique_ptr<Type> type(new Type(std::string(), std::move(ast_tdd)));
+  owner->addOwnedType(std::move(type), AM_VOID);
 
   nextSignificantToken(sym);
   if(sym.getToken() != TOK_IDENTIFIER) {
@@ -252,7 +267,7 @@ void Parser::parseTypedef(Symbol& sym, ScopeCreator* owner) {
     consumeObject(sym);
     return;
   }
-  tdd->setDefinition(owner->findTypeDecl(*sym.getSymbolData()->getAsString())->getType());
+  tdd->setDefinition(owner->findType(*sym.getSymbolData()->getAsString()));
 
   nextSignificantToken(sym);
   if(sym.getToken() != TOK_SEMICOLON) {
@@ -286,7 +301,7 @@ void Parser::parseIdDecl(Symbol& sym, ScopeCreator* owner) {
 
   // get name of base type and construct QualType
   const std::string& typeName = *sym.getSymbolData()->getAsString();
-  Type* t = module->findTypeDecl(typeName)->getType();
+  Type* t = module->findType(typeName);
   std::unique_ptr<QualType> qt(new QualType(t));
   qt->setStatic(qtStatic);
   qt->setConst(qtConst);
@@ -298,7 +313,7 @@ void Parser::parseIdDecl(Symbol& sym, ScopeCreator* owner) {
     consumeObject(sym);
     return;
   }
-  const std::string& name = *sym.getSymbolData()->getAsString();
+  const std::string name = *sym.getSymbolData()->getAsString();
 
   // determine what kind of decl (function or var)
   nextSignificantToken(sym);
@@ -321,10 +336,11 @@ void Parser::parseIdDecl(Symbol& sym, ScopeCreator* owner) {
     {
       std::unique_ptr<VarDeclStmt> vds(new VarDeclStmt(owner));
       std::string typeName = name;
+      vds->setType(std::shared_ptr<QualType>(qt.release()));
       parseVarDeclStmt(sym, vds.get(), &typeName);
       if(dynamic_cast<Module*>(owner)) {
         // gloabal var decl stmt
-        std::vector<std::unique_ptr<VarDecl>>& vars = vds->stripVars();
+        std::vector<std::unique_ptr<VarDecl>> vars = vds->stripVars();
         for(std::unique_ptr<VarDecl>& e : vars) {
           module->addGlobal(std::move(e));
         }
@@ -332,7 +348,7 @@ void Parser::parseIdDecl(Symbol& sym, ScopeCreator* owner) {
       else {
         // member var decl stmt
         ClassDecl* cd = dynamic_cast<ClassDecl*>(owner);
-        std::vector<std::unique_ptr<VarDecl>>& vars = vds->stripVars();
+        std::vector<std::unique_ptr<VarDecl>> vars = vds->stripVars();
         for(std::unique_ptr<VarDecl>& e : vars) {
           cd->addMember(std::move(e), AM_VOID); // TODO make ams work here
         }
@@ -354,6 +370,12 @@ void Parser::parseFunctionDeclTop(Symbol& sym, FunctionDecl* fd) {
     return;
   }
   parseFunctionDeclParams(sym, fd);
+  if(sym.getToken() != TOK_CLOSE_PAREN) {
+    storeError("Something when wrong with this function decl", sym);
+    consumeObject(sym);
+    return;
+  }
+  nextSignificantToken(sym);
 
   switch(sym.getToken()) {
   case TOK_EOF:
@@ -404,7 +426,7 @@ void Parser::parseFunctionDeclParams(Symbol& sym, FunctionDecl* fd) {
 
     // get name of base type
     const std::string& typeName = *sym.getSymbolData()->getAsString();
-    Type* t = module->findTypeDecl(typeName)->getType();
+    Type* t = module->findType(typeName);
     std::shared_ptr<QualType> qt(new QualType(t));
     qt->setConst(qtConst);
     qt->setStatic(qtStatic);
@@ -435,6 +457,8 @@ void Parser::parseFunctionDeclParams(Symbol& sym, FunctionDecl* fd) {
       storeError("Default params not yet supported", sym);
       consumeObject(sym);
       return;
+    case TOK_CLOSE_PAREN:
+      break;
     default:
       storeError("WTF in param list", sym);
       consumeObject(sym);
@@ -465,8 +489,8 @@ void Parser::parseCompoundStmt(Symbol& sym, CompoundStmt* cs) {
       // compound stmt
       {
         std::unique_ptr<CompoundStmt> stmt(new CompoundStmt(cs));
+	parseCompoundStmt(sym, stmt.get());
         cs->addStmt(std::move(stmt));
-        parseCompoundStmt(sym, stmt.get());
       }
       break;
 
@@ -491,8 +515,8 @@ void Parser::parseCompoundStmt(Symbol& sym, CompoundStmt* cs) {
       // if stmt
       {
       	std::unique_ptr<IfStmt> stmt(new IfStmt(cs));
+	parseIfStmt(sym, stmt.get());
         cs->addStmt(std::move(stmt));
-        parseIfStmt(sym, stmt.get());
       }
       break;
 
@@ -503,40 +527,40 @@ void Parser::parseCompoundStmt(Symbol& sym, CompoundStmt* cs) {
           break;
         }
         std::unique_ptr<ElseStmt> stmt(new ElseStmt(cs));
-        cs->addStmt(std::move(stmt));
         stmt->setIf(dynamic_cast<IfStmt*>(cs->getStmts().back()));
         parseElseStmt(sym, stmt.get());
+	cs->addStmt(std::move(stmt));
       }
       break;
 
     case TOK_WHILE:
       {
         std::unique_ptr<WhileStmt> stmt(new WhileStmt(cs));
-        cs->addStmt(std::move(stmt));
         parseWhileStmt(sym, stmt.get());
+	cs->addStmt(std::move(stmt));
       }
       break;
 
     case TOK_FOR:
       {
         std::unique_ptr<ForStmt> stmt(new ForStmt(cs));
-        cs->addStmt(std::move(stmt));
         parseForStmt(sym, stmt.get());
+	cs->addStmt(std::move(stmt));
       }
       break;
 
     case TOK_SWITCH:
       {
         std::unique_ptr<SwitchStmt> stmt(new SwitchStmt(cs));
-        cs->addStmt(std::move(stmt));
         parseSwitchStmt(sym, stmt.get());
+	cs->addStmt(std::move(stmt));
       }
       break;
 
     case TOK_BREAK:
       {
         std::unique_ptr<BreakStmt> stmt(new BreakStmt(cs));
-        cs->addStmt(std::move(stmt));
+	cs->addStmt(std::move(stmt));
         nextSignificantToken(sym);
         if(sym.getToken() != TOK_SEMICOLON) {
           storeError("WTF after break stmt", sym);
@@ -561,15 +585,14 @@ void Parser::parseCompoundStmt(Symbol& sym, CompoundStmt* cs) {
       {
         std::unique_ptr<ReturnStmt> ast_stmt(new ReturnStmt(cs));
         ReturnStmt* stmt = ast_stmt.get();
-        cs->addStmt(std::move(ast_stmt));
         nextSignificantToken(sym);
         if(sym.getToken() == TOK_IDENTIFIER ||
            sym.getToken() == TOK_NUM_LIT ||
            sym.getToken() == TOK_STR_LIT ||
            sym.getToken() == TOK_CHAR_LIT) {
-          // TODO change this to get an expr instead
           stmt->setValue(parseExpr(sym, nullptr, stmt, nullptr));
         }
+	cs->addStmt(std::move(ast_stmt));
       }
       break;
 
@@ -726,7 +749,12 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
       while(true) {
         // grab args seperated by commas and ending in a close paren
         std::unique_ptr<Expr> arg = parseExpr(sym, nullptr, owner, func.get());
-        func->addArg(std::move(arg));
+	if(arg) {
+	  func->addArg(std::move(arg));
+	}
+	else {
+	  break;
+	}
         if(sym.getToken() == TOK_COMMA) {
           nextSignificantToken(sym);
           continue;
@@ -763,6 +791,7 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
     }
     group->setBody(std::move(body));
     ret = std::move(group);
+    nextSignificantToken(sym);
   }
 
   // apply the preOp if there was one
@@ -788,7 +817,7 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
 
   // apply the postOp if there was one
   if(postOp != OP_VOID) {
-    ret = std::make_unique<UnaryOperationExpr>(owner, parentExpr, std::move(ret), preOp);
+    ret = std::make_unique<UnaryOperationExpr>(owner, parentExpr, std::move(ret), postOp);
   }
 
   // if this is part of a bianry expr, get the other part recursivly
@@ -1052,6 +1081,28 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
       ret = std::move(boe);
       break;
     }
+  case TOK_LT:
+    {
+      nextSignificantToken(sym);
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+                                                                       nullptr, OP_LT));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      break;
+    }
+  case TOK_GT:
+    {
+      nextSignificantToken(sym);
+      std::unique_ptr<BinaryOperationExpr> boe(new BinaryOperationExpr(owner, parentExpr,
+								       std::move(ret),
+								       nullptr, OP_GT));
+      std::unique_ptr<Expr> rOperand = parseExpr(sym, nullptr, owner, boe.get());
+      boe->setRightOperand(std::move(rOperand));
+      ret = std::move(boe);
+      break;
+    }
   case TOK_LOGI_AND:
     {
       nextSignificantToken(sym);
@@ -1138,7 +1189,6 @@ void Parser::parseIfStmt(Symbol& sym, IfStmt* stmt) {
   stmt->setBody(std::move(if_cs));
   parseCompoundStmt(sym, cs);
 
-  nextSignificantToken(sym);
   return;
 }
 
@@ -1170,7 +1220,6 @@ void Parser::parseElseStmt(Symbol& sym, ElseStmt* stmt) {
     return;
   }
 
-  nextSignificantToken(sym);
   return;
 }
 
@@ -1206,7 +1255,6 @@ void Parser::parseWhileStmt(Symbol& sym, WhileStmt* stmt) {
   stmt->setBody(std::move(while_cs));
   parseCompoundStmt(sym, cs);
 
-  nextSignificantToken(sym);
   return;
 }
 
@@ -1228,7 +1276,10 @@ void Parser::parseForStmt(Symbol& sym, ForStmt* stmt) {
     // move on to stop
     break;
   case TOK_IDENTIFIER:
-    parseIdStmt(sym, stmt);
+    {
+      std::unique_ptr<Stmt> start(dynamic_cast<Stmt*>(parseIdStmt(sym, stmt).release()));
+      stmt->setStart(std::move(start));
+    }
     break;
   default:
     storeError("WTF in for statement start", sym);
@@ -1319,7 +1370,7 @@ std::unique_ptr<AstNode> Parser::parseIdStmt(Symbol& sym, ScopeCreator* owner) {
   bool qtConst = false;
   if(sym.getToken() != TOK_IDENTIFIER) {
     fatalError("parseIdStmt not passed identifier", sym);
-    return std::unique_ptr<Stmt>(nullptr);
+    return std::unique_ptr<AstNode>(nullptr);
   }
   std::string first = *sym.getSymbolData()->getAsString();
 
@@ -1327,7 +1378,7 @@ std::unique_ptr<AstNode> Parser::parseIdStmt(Symbol& sym, ScopeCreator* owner) {
   switch(sym.getToken()) {
   case TOK_EOF:
     fatalError("Unexpected EOF", sym);
-    return std::unique_ptr<Stmt>(nullptr);
+    return std::unique_ptr<AstNode>(nullptr);
 
   case TOK_LE:
   case TOK_GE:
@@ -1393,7 +1444,7 @@ std::unique_ptr<AstNode> Parser::parseIdStmt(Symbol& sym, ScopeCreator* owner) {
   case TOK_IDENTIFIER:
     // either var decl stmt or func decl
     {
-      Type* t = module->findTypeDecl(first)->getType();
+      Type* t = module->findType(first);
 
       std::string second = *sym.getSymbolData()->getAsString();
       nextSignificantToken(sym);
@@ -1410,9 +1461,9 @@ std::unique_ptr<AstNode> Parser::parseIdStmt(Symbol& sym, ScopeCreator* owner) {
           std::shared_ptr<QualType> qt(new QualType(t));
           qt->setConst(qtConst);
           qt->setStatic(qtStatic);
-          ret->setType(std::move(qt));
+          ret->setType(qt);
           parseVarDeclStmt(sym, ret.get(), &second);
-          return ret;
+          return std::move(ret);
         }
       case TOK_OPEN_PAREN:
         {
@@ -1424,7 +1475,7 @@ std::unique_ptr<AstNode> Parser::parseIdStmt(Symbol& sym, ScopeCreator* owner) {
           ret->setReturnType(std::move(qt));
           ret->setName(std::make_unique<std::string>(second));
           parseFunctionDeclTop(sym, ret.get());
-          return ret;
+          return std::move(ret);
         }
       default:
         storeError("WTF in unknown stmt", sym);
@@ -1442,7 +1493,7 @@ std::unique_ptr<AstNode> Parser::parseIdStmt(Symbol& sym, ScopeCreator* owner) {
 void Parser::parseVarDeclStmt(Symbol& sym, VarDeclStmt* vds,
                               std::string* id) {
   std::shared_ptr<QualType> qt(vds->getType());
-  std::unique_ptr<VarDecl> vd(new VarDecl(vds->getOwner(), std::move(qt)));
+  std::unique_ptr<VarDecl> vd(new VarDecl(vds->getOwner(), qt));
   if(id) {
     vd->setName(std::make_unique<std::string>(*id));
   }
@@ -1454,6 +1505,13 @@ void Parser::parseVarDeclStmt(Symbol& sym, VarDeclStmt* vds,
     vd->setName(std::make_unique<std::string>(*sym.getSymbolData()->getAsString()));
     nextSignificantToken(sym);
   }
+      
+  if(sym.getToken() == TOK_ASSIGN) {
+    nextSignificantToken(sym);
+    std::unique_ptr<Expr> init = parseExpr(sym, nullptr, vds, nullptr);
+    vd->setInit(std::move(init));
+  }
+  vds->getOwner()->addOwnedVar(vd.get());
   vds->addVar(std::move(vd));
 
   while(true) { // I hate this and I want it gone
@@ -1468,8 +1526,9 @@ void Parser::parseVarDeclStmt(Symbol& sym, VarDeclStmt* vds,
         consumeObject(sym);
         return;
       }
-      vd = std::make_unique<VarDecl>(vds->getOwner(), std::move(qt));
+      vd = std::make_unique<VarDecl>(vds->getOwner(), qt);
       vd->setName(std::make_unique<std::string>(*sym.getSymbolData()->getAsString()));
+      vds->getOwner()->addOwnedVar(vd.get());
       vds->addVar(std::move(vd));
       nextSignificantToken(sym);
       continue;
@@ -1528,6 +1587,6 @@ void Parser::parse() {
   return;
 }
 
-std::unique_ptr<Module> Parser::stripModule() {
+std::unique_ptr<Module>&& Parser::stripModule() {
   return std::move(module);
 }

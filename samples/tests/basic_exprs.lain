@@ -1,0 +1,11 @@
+int main() {
+  // a must be defined because statements like "1 + 1" are considered
+  // syntactically incorrect, as they do nothing
+  long a;
+  a = 1 + 1;
+  a = 2 * 2;
+  a = 20 / 5;
+  a = 14 % 5;
+
+  return 0;
+}

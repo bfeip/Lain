@@ -5,6 +5,9 @@
 #include "lexer.hpp"
 #include "module.hpp"
 
+#include "typedef_decl.hpp"
+#include "class_decl.hpp"
+
 class Parser {
 private:
   std::string filename;
@@ -49,11 +52,11 @@ private:
   void storeWarn(const std::string& errstr, const Symbol& sym);
 public:
   Parser() = delete;
-  Parser(const std::string& filename) : filename(filename), lex(filename),
-					module(new Module(filename)) {}
+  Parser(const std::string& filename, llvm::StringMap<std::unique_ptr<Module>>& externals) :
+    filename(filename), lex(filename), module(new Module(filename, externals)) {}
   void parse();
   const Module* getModule() const { return module.get(); }
-  std::unique_ptr<Module> stripModule();
+  std::unique_ptr<Module>&& stripModule();
 };
 
 #endif

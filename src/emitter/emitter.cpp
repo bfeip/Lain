@@ -6,9 +6,11 @@ void Emitter::emitTop() {
    * may eventually end up doing all the declarations first and the 
    * definitions later. If I end up choosing to do that this is where
    * I'll insert a emitDecls call */
-  const std::vector<const TypeDecl*>& types = tu->getTypeDecls();
-  for(const TypeDecl* type : types) {
-    emitType(type);
+  const std::vector<const Type*>& types = tu->getTypes();
+  for(const Type* type : types) {
+    if(!type->isPrimitive()) {
+      emitType(type->getDecl());
+    }
   }
 
   // emit globals next
@@ -20,14 +22,19 @@ void Emitter::emitTop() {
   // emit FuntionDecls last
   const std::vector<const FunctionDecl*>& funcs = tu->getFunctionDecls();
   for(const FunctionDecl* func : funcs) {
-    emitFunction(func);
+    // emit declatarions
+    emitFunctionDec(func);
+  }
+  for(const FunctionDecl* func : funcs) {
+    // emit definitions
+    emitFunctionDef(func);
   }
 
   return;
 }
 
 void Emitter::emitGlobalVar(const VarDecl* vd) {
-  llvm::Type* type = findType(*vd->getType()->getType()->getName());
+  llvm::Type* type = findType(vd->getType()->getType()->getName());
   const std::string& name = *vd->getName();
   llvm::Constant* init = static_cast<llvm::Constant*>(emitExpr(vd->getInit()));
   std::unique_ptr<llvm::GlobalVariable> global(new llvm::GlobalVariable(*module.get(), type, false,
@@ -68,9 +75,11 @@ void Emitter::emitClass(const ClassDecl* cd) {
   }
 
   // emit contained types
-  const std::vector<const TypeDecl*>& types = cd->getTypeDecls();
-  for(const TypeDecl* td : types) {
-    emitType(td);
+  const std::vector<const Type*>& types = cd->getTypes();
+  for(const Type* type : types) {
+    if(!type->isPrimitive()) {
+      emitType(type->getDecl());
+    }
   }
 
   // emit methods
@@ -82,13 +91,13 @@ void Emitter::emitClass(const ClassDecl* cd) {
   return;
 }
 
-void Emitter::emitFunction(const FunctionDecl* fd) {
+void Emitter::emitFunctionDec(const FunctionDecl* fd) {
   // get param types
   const std::vector<const VarDecl*> lainParams = fd->getParams();
   std::vector<llvm::Type*> llvmParams;
   for(const VarDecl* vd : lainParams) {
     // find Type of vd (not QualType)
-    llvm::Type* llvmType = findType(*vd->getType()->getType()->getName());
+    llvm::Type* llvmType = findType(vd->getType()->getType()->getName());
     if(!llvmType) {
       fatalError("could not find corrosponding LLVM type to " + *vd->getName());
     }
@@ -96,7 +105,7 @@ void Emitter::emitFunction(const FunctionDecl* fd) {
   }
 
   // get return type
-  const std::string& lainReturnType = *fd->getReturnType()->getType()->getName();
+  const std::string& lainReturnType = fd->getReturnType()->getType()->getName();
   llvm::Type* llvmReturnType = findType(lainReturnType);
 
   // create FunctionType
@@ -114,10 +123,18 @@ void Emitter::emitFunction(const FunctionDecl* fd) {
   llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage,
 					     *functionName, module.get());
 
+  return;
+}
+
+void Emitter::emitFunctionDef(const FunctionDecl* fd) {
+  llvm::Function* f = module->getFunction(*fd->getName());
+  functionStack.push(f);
+
   // Add body to function
   llvm::BasicBlock* bb = llvm::BasicBlock::Create(context, "entry", f);
   builder.SetInsertPoint(bb);
   int i = 0;
+  const std::vector<const VarDecl*> lainParams = fd->getParams();
   for(auto& arg : f->args()) {
     arg.setName(*lainParams[i++]->getName());
   }
@@ -130,9 +147,11 @@ void Emitter::emitFunction(const FunctionDecl* fd) {
 
   emitCompoundStmt(fd->getBody()); // emit function body
   scopedValues.pop_back(); // remove params
+  functionStack.pop();
   llvm::verifyFunction(*f);
 
   return;
+
 }
 
 void Emitter::emitMethod(const FunctionDecl* fd, llvm::StructType* self) {
@@ -142,7 +161,7 @@ void Emitter::emitMethod(const FunctionDecl* fd, llvm::StructType* self) {
   llvmParams.push_back(self); // add 'this' param
   for(const VarDecl* vd : lainParams) {
     // find Type of vd (not QualType)
-    llvm::Type* llvmType = findType(*vd->getType()->getType()->getName());
+    llvm::Type* llvmType = findType(vd->getType()->getType()->getName());
     if(!llvmType) {
       fatalError("could not find corrosponding LLVM type to " + *vd->getName());
     }
@@ -150,7 +169,7 @@ void Emitter::emitMethod(const FunctionDecl* fd, llvm::StructType* self) {
   }
 
   // get return type
-  const std::string& lainReturnType = *fd->getReturnType()->getType()->getName();
+  const std::string& lainReturnType = fd->getReturnType()->getType()->getName();
   llvm::Type* llvmReturnType = findType(lainReturnType);
 
   // create FunctionType
@@ -163,6 +182,7 @@ void Emitter::emitMethod(const FunctionDecl* fd, llvm::StructType* self) {
     *fd->getName();
   llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage,
 					     functionName, module.get());
+  functionStack.push(f);
 
   // add body to function and set names of params
   llvm::BasicBlock* bb = llvm::BasicBlock::Create(context, "entry", f);
@@ -183,6 +203,7 @@ void Emitter::emitMethod(const FunctionDecl* fd, llvm::StructType* self) {
 
   emitCompoundStmt(fd->getBody()); // emit function body
   scopedValues.pop_back(); // remove params from scoped values
+  functionStack.pop();
   llvm::verifyFunction(*f);
 
   return;
@@ -234,21 +255,18 @@ void Emitter::emitCompoundStmt(const CompoundStmt* cs) {
 }
 
 void Emitter::emitVarDeclStmt(const VarDeclStmt* vds) {
-  llvm::Type* type = findType(*vds->getType()->getType()->getName());
+  llvm::Type* type = findType(vds->getType()->getType()->getName());
   const std::vector<const VarDecl*>& vars = vds->getVars();
   llvm::StringMap<llvm::Value*>& scope = scopedValues.back();
   for(const VarDecl* var : vars) {
-    if(vds->getOwner()->findVarDecl(*var->getName())) {
-      fatalError("Var already declared: " + *var->getName());
-    }
-
     // all vars are stack allocated right now
     llvm::Value* addr = builder.CreateAlloca(type, nullptr, *var->getName());
     scope.insert(std::pair<std::string, llvm::Value*>(*var->getName(), addr));
 
     // store the value of the init at the vars address
     if(const Expr* init = var->getInit()) {
-      builder.CreateStore(emitExpr(init), addr);
+      llvm::Value* initVal = emitExpr(init);
+      builder.CreateStore(castType(initVal, addr->getType()->getPointerElementType()), addr);
     }
   }
 
@@ -257,20 +275,20 @@ void Emitter::emitVarDeclStmt(const VarDeclStmt* vds) {
 
 void Emitter::emitIfStmt(const IfStmt* is) {
   llvm::Value* condition = emitExpr(is->getCondition());
-  llvm::BasicBlock* endBlock = llvm::BasicBlock::Create(context, "",
+  llvm::BasicBlock* endBlock = llvm::BasicBlock::Create(context, "if_exit",
 							functionStack.top());
-  llvm::BasicBlock* ifBlock = llvm::BasicBlock::Create(context, "",
+  llvm::BasicBlock* ifBlock = llvm::BasicBlock::Create(context, "if",
 						       functionStack.top());
   llvm::BasicBlock* elseBlock = nullptr;
   const ElseStmt* es = is->getElse();
 
   // create apropriate conditional br
   if(es) {
-    elseBlock = llvm::BasicBlock::Create(context, "", functionStack.top());
-    builder.CreateCondBr(condition, ifBlock, elseBlock);
+    elseBlock = llvm::BasicBlock::Create(context, "else", functionStack.top());
+    builder.CreateCondBr(removeRefs(condition), ifBlock, elseBlock);
   }
   else {
-    builder.CreateCondBr(condition, ifBlock, endBlock);
+    builder.CreateCondBr(removeRefs(condition), ifBlock, endBlock);
   }
 
   // emit if body
@@ -306,11 +324,11 @@ void Emitter::emitIfStmt(const IfStmt* is) {
 }
 
 void Emitter::emitWhileStmt(const WhileStmt* ws) {
-  llvm::BasicBlock* endBlock = llvm::BasicBlock::Create(context, "",
+  llvm::BasicBlock* endBlock = llvm::BasicBlock::Create(context, "while_exit",
 							functionStack.top());
-  llvm::BasicBlock* condBlock = llvm::BasicBlock::Create(context, "",
+  llvm::BasicBlock* condBlock = llvm::BasicBlock::Create(context, "while_cond",
 							 functionStack.top());
-  llvm::BasicBlock* whileBlock = llvm::BasicBlock::Create(context, "",
+  llvm::BasicBlock* whileBlock = llvm::BasicBlock::Create(context, "while",
 							  functionStack.top());
 
   // create condition
@@ -335,15 +353,15 @@ void Emitter::emitWhileStmt(const WhileStmt* ws) {
 }
 
 void Emitter::emitForStmt(const ForStmt* fs) {
-  llvm::BasicBlock* initBlock = llvm::BasicBlock::Create(context, "",
+  llvm::BasicBlock* initBlock = llvm::BasicBlock::Create(context, "for_init",
 							 functionStack.top());
-  llvm::BasicBlock* condBlock = llvm::BasicBlock::Create(context, "",
+  llvm::BasicBlock* condBlock = llvm::BasicBlock::Create(context, "for_cond",
 							 functionStack.top());
-  llvm::BasicBlock* stepBlock = llvm::BasicBlock::Create(context, "",
+  llvm::BasicBlock* stepBlock = llvm::BasicBlock::Create(context, "for_step",
 							 functionStack.top());
-  llvm::BasicBlock* forBlock = llvm::BasicBlock::Create(context, "",
+  llvm::BasicBlock* forBlock = llvm::BasicBlock::Create(context, "for",
 							functionStack.top());
-  llvm::BasicBlock* endBlock = llvm::BasicBlock::Create(context, "",
+  llvm::BasicBlock* endBlock = llvm::BasicBlock::Create(context, "for_exit",
 							functionStack.top());
   // create init
   builder.CreateBr(initBlock);
@@ -432,25 +450,33 @@ void Emitter::emitReturnStmt(const ReturnStmt* rs) {
 }
 
 llvm::Value* Emitter::emitExpr(const Expr* e) {
+  llvm::Value* ret;
   if(const BinaryOperationExpr* boe = dynamic_cast<const BinaryOperationExpr*>(e)) {
-    return emitBinaryOperationExpr(boe);
+    ret = emitBinaryOperationExpr(boe);
   }
   else if(const UnaryOperationExpr* uoe = dynamic_cast<const UnaryOperationExpr*>(e)) {
-    return emitUnaryOperationExpr(uoe);
+    ret = emitUnaryOperationExpr(uoe);
   }
   else if(const FunctionCallExpr* fce = dynamic_cast<const FunctionCallExpr*>(e)) {
-    return emitFunctionCallExpr(fce);
+    ret = emitFunctionCallExpr(fce);
   }
   else if(const GroupedExpr* ge = dynamic_cast<const GroupedExpr*>(e)) {
-    return emitExpr(ge->getBody());
+    ret = emitExpr(ge->getBody());
   }
   else if(const VarInstanceExpr* vie = dynamic_cast<const VarInstanceExpr*>(e)) {
-    return emitVarInstanceExpr(vie);
+    ret = emitVarInstanceExpr(vie);
   }
   else if(const LiteralExpr* le = dynamic_cast<const LiteralExpr*>(e)) {
-    return emitLiteralExpr(le);
+    ret = emitLiteralExpr(le);
   }
-  fatalError("Missing expr case in emitter");
+  else {
+    fatalError("Missing expr case in emitter");
+  }
+  for(llvm::Instruction* inst : delayedInstructions) {
+    builder.Insert(inst);
+  }
+  delayedInstructions.clear();
+  return ret;
 }
 
 llvm::Value* Emitter::emitBinaryOperationExpr(const BinaryOperationExpr* boe) {
@@ -459,23 +485,50 @@ llvm::Value* Emitter::emitBinaryOperationExpr(const BinaryOperationExpr* boe) {
   // for now
   llvm::Value* l = emitExpr(boe->getLeftOperand());
   llvm::Value* r = emitExpr(boe->getRightOperand());
+  std::pair<llvm::Value*, llvm::Value*> corrected;
   switch(boe->getOp()) {
   case OP_ASSIGN:
     {
       // array access ignored
       const Expr* leftOp = boe->getLeftOperand();
+      r = castType(r, l->getType()->getPointerElementType());
       return builder.CreateStore(r, l);
     }
   case OP_ADD:
-    return builder.CreateAdd(l, r);
+    corrected = readyBOE(boe, l, r);
+    return builder.CreateAdd(corrected.first, corrected.second);
   case OP_SUB:
-    return builder.CreateSub(l, r);
+    corrected = readyBOE(boe, l, r);
+    return builder.CreateSub(corrected.first, corrected.second);
   case OP_MUL:
-    return builder.CreateMul(l, r);
+    corrected = readyBOE(boe, l, r);
+    return builder.CreateMul(corrected.first, corrected.second);
   case OP_DIV:
-    return builder.CreateSDiv(l, r);
+    corrected = readyBOE(boe, l, r);
+    return builder.CreateSDiv(corrected.first, corrected.second);
   case OP_MOD:
-    return builder.CreateURem(l, r);
+    corrected = readyBOE(boe, l, r);
+    return builder.CreateSRem(corrected.first, corrected.second);
+  case OP_LT:
+    corrected = readyBOE(boe, l, r);
+    return builder.CreateICmpSLT(corrected.first, corrected.second);
+  case OP_GT:
+    corrected = readyBOE(boe, l, r);
+    return builder.CreateICmpSGT(corrected.first, corrected.second);
+  case OP_LOGI_AND:
+    corrected = readyBOE(boe, l, r);
+    l = builder.CreateICmpNE(corrected.first,
+			     llvm::ConstantInt::get(corrected.first->getType(), 0));
+    r = builder.CreateICmpNE(corrected.second,
+			     llvm::ConstantInt::get(corrected.second->getType(), 0));
+    return builder.CreateAnd(l, r);
+  case OP_LOGI_OR:
+    corrected = readyBOE(boe, l, r);
+    l = builder.CreateICmpNE(corrected.first,
+			     llvm::ConstantInt::get(corrected.first->getType(), 0));
+    r = builder.CreateICmpNE(corrected.second,
+			     llvm::ConstantInt::get(corrected.second->getType(), 0));
+    return builder.CreateAnd(l, r);
   default:
     fatalError("Missing binary expr case in emitter");
     // TODO: add the rest of the operations
@@ -487,32 +540,42 @@ llvm::Value* Emitter::emitUnaryOperationExpr(const UnaryOperationExpr* uoe) {
   llvm::Value* child;
   llvm::Value* updated;
   llvm::BinaryOperator* delayed;
+  static llvm::ConstantInt* one = llvm::ConstantInt::get(llvm::IntegerType::get(context, 2), 1);
   switch(uoe->getOp()) {
   case OP_PRE_INC:
     child = emitExpr(operand);
-    updated = builder.CreateAdd(child, llvm::ConstantInt::get(findType("int"), 1));
+    child = builder.CreateLoad(child);
+    updated = builder.CreateAdd(child, castType(one, child->getType()));
     return builder.CreateStore(updated, child);
   case OP_PRE_DEC:
     child = emitExpr(operand);
-    updated = builder.CreateSub(child, llvm::ConstantInt::get(findType("int"), 1));
+    child = builder.CreateLoad(child);
+    updated = builder.CreateSub(child, castType(one, child->getType()));
     return builder.CreateStore(updated, child);
   case OP_POST_INC:
     child = emitExpr(operand);
+    child = builder.CreateLoad(child);
     delayed = llvm::BinaryOperator::Create(llvm::Instruction::Add, child,
-					   llvm::ConstantInt::get(findType("int"), 1));
+					   castType(one, child->getType()));
     delayedInstructions.push_back(delayed);
     return child;
   case OP_POST_DEC:
     child = emitExpr(operand);
+    child = builder.CreateLoad(child);
     delayed = llvm::BinaryOperator::Create(llvm::Instruction::Sub, child,
-					   llvm::ConstantInt::get(findType("int"), 1));
+					   castType(one, child->getType()));
     delayedInstructions.push_back(delayed);
     return child;
   case OP_NEG:
     child = emitExpr(operand);
-    return builder.CreateNeg(child);;
+    child = builder.CreateLoad(child);
+    return builder.CreateNeg(child);
   case OP_ABS:
     // TODO
+  case OP_NOT:
+    child = emitExpr(operand);
+    child = removeRefs(child);
+    return builder.CreateICmpNE(child, llvm::ConstantInt::get(child->getType(), 0));
   default:
     fatalError("Missing unary expr case in emitter");
   }
@@ -561,16 +624,62 @@ llvm::Value* Emitter::emitLiteralExpr(const LiteralExpr* le) {
   }
 }
 
+llvm::Value* Emitter::removeRefs(llvm::Value* val) {
+  if(val->getType()->isPointerTy()) {
+    return builder.CreateLoad(val);
+  }
+  return val;
+}
+
+std::pair<llvm::Value*, llvm::Value*> Emitter::readyBOE(const BinaryOperationExpr* boe,
+							llvm::Value* l, llvm::Value* r) {
+  if(dynamic_cast<const VarInstanceExpr*>(boe->getLeftOperand())) {
+    l = builder.CreateLoad(l);
+  }
+  if(dynamic_cast<const VarInstanceExpr*>(boe->getRightOperand())) {
+    r = builder.CreateLoad(r);
+  }
+  
+  llvm::Type* lt = l->getType();
+  llvm::Type* rt = r->getType();
+  if(lt != rt) {
+    // casting of some form is required
+    if(lt->isIntegerTy() && rt->isIntegerTy()) {
+      llvm::IntegerType* lit = static_cast<llvm::IntegerType*>(lt);
+      llvm::IntegerType* rit = static_cast<llvm::IntegerType*>(rt);
+      if(lit->getBitWidth() > rit->getBitWidth()) {
+	r = builder.CreateSExt(r, lit);
+	return std::make_pair(l, r);
+      }
+      else {
+	l = builder.CreateSExt(l, rit);
+	return std::make_pair(l, r);
+      }
+    }
+    // other types of casts go here... I know... I'm lazy
+  }
+  
+  std::make_pair(l, r); // no casting needed
+}
+
+llvm::Value* Emitter::castType(llvm::Value* val, llvm::Type* t) {
+  if(t->isIntegerTy()){
+    return castInteger(val, static_cast<llvm::IntegerType*>(t));
+  }
+}
+
+llvm::Value* Emitter::castInteger(llvm::Value* val, llvm::IntegerType* t) {
+  return builder.CreateSExtOrTrunc(val, t);
+}
+
 llvm::Type* Emitter::findType(const std::string& name) {
   llvm::StringMap<llvm::StructType*>::iterator clas = classMap.find(name);
   if(clas != classMap.end()) {
     return clas->getValue();
   }
-  else if(name == "int") {
-    return primitiveMap.find(PT_INT)->second;
-  }
-  else if(name == "double") {
-    return primitiveMap.find(PT_DOUBLE)->second;
+  llvm::StringMap<llvm::Type*>::iterator prim = primitiveMap.find(name);
+  if(prim != primitiveMap.end()) {
+    return prim->getValue();
   }
   // and so on
 }
@@ -582,5 +691,10 @@ void Emitter::fatalError(const std::string& errstr) {
 
 void Emitter::emit() {
   emitTop();
+  module->dump();
   return;
+}
+
+std::unique_ptr<llvm::Module>&& Emitter::stripModule() {
+  return std::move(module);
 }

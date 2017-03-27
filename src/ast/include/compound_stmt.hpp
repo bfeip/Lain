@@ -1,8 +1,9 @@
 #ifndef COMPOUND_STMT_HPP
 #define COMPOUND_STMT_HPP
 
-#include "type_decl.hpp"
+class TypeDecl;
 #include "scope_creator.hpp"
+#include "return_stmt.hpp"
 #include "stmt.hpp"
 
 class CompoundStmt : virtual public Stmt, virtual public ScopeCreator {
@@ -15,7 +16,9 @@ public:
 
   const std::vector<Stmt*> getStmts();
   const std::vector<const Stmt*> getStmts() const;
-  void addStmt(std::unique_ptr<Stmt> stmt) { stmts.emplace_back(std::move(stmt)); }
+  void addStmt(std::unique_ptr<Stmt>&& stmt);
 };
+
+#include "type_decl.hpp"
 
 #endif

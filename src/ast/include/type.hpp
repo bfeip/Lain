@@ -10,28 +10,28 @@ private:
   static int nextId;
   int id;
   
-  std::unique_ptr<std::string> name;
-  TypeDecl* decl;
+  std::string name;
+  std::unique_ptr<TypeDecl> decl;
 
   std::unordered_map<Type*, AccessModifier> parents;
   std::unordered_map<Type*, AccessModifier> children;
 public:
   Type() = delete;
-  Type(std::unique_ptr<std::string>&& str, TypeDecl* td) :
-    id(nextId++), decl(td), name(std::move(str)) {}
+  Type(const std::string& str, std::unique_ptr<TypeDecl> td) :
+    id(nextId++), decl(std::move(td)), name(str) {}
   virtual ~Type() = default;
 
   int getTypeId() const { return id; }
   bool isPrimitive() const { return id <= 13; }
 
   bool isResolved() const { return decl != nullptr; }
-  TypeDecl* getDecl() { return decl; }
-  const TypeDecl* getDecl() const { return decl; }
-  void setDecl(TypeDecl* td) { decl = td; }
+  TypeDecl* getDecl() { return decl.get(); }
+  const TypeDecl* getDecl() const { return decl.get(); }
+  void setDecl(std::unique_ptr<TypeDecl> td) { decl = std::move(td); }
 
-  std::string* getName() { return name.get(); }
-  const std::string* getName() const { return name.get(); }
-  void setName(std::unique_ptr<std::string>&& str) { name = std::move(str); }
+  std::string& getName() { return name; }
+  const std::string& getName() const { return name; }
+  void setName(const std::string& str) { name = str; }
     
   const std::pair<Type*, AccessModifier>* findParent(const std::string& name);
   void addParent(Type* par, AccessModifier am) {
@@ -43,5 +43,7 @@ public:
     children.emplace(child, am);
   }
 };
+
+#include "type_decl.hpp"
 
 #endif

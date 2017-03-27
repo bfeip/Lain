@@ -8,15 +8,15 @@ const std::vector<FunctionDecl*> ScopeCreator::getFunctionDecls() {
   return ret;
 }
 
-const std::vector<TypeDecl*> ScopeCreator::getTypeDecls() {
-  std::vector<TypeDecl*> ret;
-  for(std::pair<const std::unique_ptr<TypeDecl>, AccessModifier>& td : ownedTDecls) {
-    ret.push_back(td.first.get());
+const std::vector<Type*> ScopeCreator::getTypes() {
+  std::vector<Type*> ret;
+  for(std::pair<const std::unique_ptr<Type>, AccessModifier>& t : ownedTypes) {
+    ret.push_back(t.first.get());
   }
   return ret;
 }
 
-FunctionDecl* ScopeCreator::findFunctionDecl(const std::string& name) {
+FunctionDecl* ScopeCreator::findFunctionDecl(const std::string& name, bool external) {
   // breadth first(ish)
   // there is perhaps an error here for nameless functions
   for(std::pair<const std::unique_ptr<FunctionDecl>, AccessModifier>& fd : ownedFDecls) {
@@ -26,6 +26,17 @@ FunctionDecl* ScopeCreator::findFunctionDecl(const std::string& name) {
   }
   if(this == owner) {
     // this is the module (top-level)
+    if(external) {
+      // this was call came from an outside module stop here
+      return nullptr;
+    }
+    Module* module = dynamic_cast<Module*>(this);
+    for(llvm::StringMapEntry<std::unique_ptr<Module>>& ex : module->getExternals()) {
+      FunctionDecl* fd = ex.getValue()->findFunctionDecl(name, true);
+      if(fd) {
+	return fd;
+      }
+    }
     return nullptr;
   }
   else {
@@ -33,30 +44,53 @@ FunctionDecl* ScopeCreator::findFunctionDecl(const std::string& name) {
   }
 }
 
-TypeDecl* ScopeCreator::findTypeDecl(const std::string& name) {
+Type* ScopeCreator::findType(const std::string& name, bool external) {
   // breadth first(ish)
-  const std::vector<TypeDecl*> decls = getTypeDecls();
-  for(TypeDecl* td : decls) {
-    if(*td->getName() == name) {
-      return td;
+  const std::vector<Type*> types = getTypes();
+  for(Type* t : types) {
+    if(t->getName() == name) {
+      return t;
     }
   }
   if(this == owner) {
     // this is the module (top-level)
+    if(external) {
+      // this was call came from an outside module stop here
+      return nullptr;
+    }
+    Module* module = dynamic_cast<Module*>(this);
+    for(llvm::StringMapEntry<std::unique_ptr<Module>>& ex : module->getExternals()) {
+      Type* t = ex.getValue()->findType(name, true);
+      if(t) {
+	return t;
+      }
+    }
     return nullptr;
   }
   else {
-    return owner->findTypeDecl(name);
+    return owner->findType(name);
   }
 }
 
-VarDecl* ScopeCreator::findVarDecl(const std::string& name) {
+VarDecl* ScopeCreator::findVarDecl(const std::string& name, bool external) {
   for(VarDecl* var : ownedVars) {
     if(*var->getName() == name) {
       return var;
     }
   }
   if(owner == this) {
+    // this is the module (top-level)
+    if(external) {
+      // this was call came from an outside module stop here
+      return nullptr;
+    }
+    Module* module = dynamic_cast<Module*>(this);
+    for(llvm::StringMapEntry<std::unique_ptr<Module>>& ex : module->getExternals()) {
+      VarDecl* vd = ex.getValue()->findVarDecl(name, true);
+      if(vd) {
+	return vd;
+      }
+    }
     return nullptr;
   }
   else {
@@ -71,7 +105,7 @@ Decl* ScopeCreator::findDecl(const std::string& name) {
     return found;
   }
   else {
-    return findTypeDecl(name);
+    return findType(name)->getDecl();
   }
 }
 
@@ -91,15 +125,15 @@ const std::vector<const FunctionDecl*> ScopeCreator::getFunctionDecls() const {
   return ret;
 }
 
-const std::vector<const TypeDecl*> ScopeCreator::getTypeDecls() const {
-  std::vector<const TypeDecl*> ret;
-  for(const std::pair<const std::unique_ptr<TypeDecl>, AccessModifier>& td : ownedTDecls) {
-    ret.push_back(td.first.get());
+const std::vector<const Type*> ScopeCreator::getTypes() const {
+  std::vector<const Type*> ret;
+  for(const std::pair<const std::unique_ptr<Type>, AccessModifier>& t : ownedTypes) {
+    ret.push_back(t.first.get());
   }
   return ret;
 }
 
-const FunctionDecl* ScopeCreator::findFunctionDecl(const std::string& name) const {
+const FunctionDecl* ScopeCreator::findFunctionDecl(const std::string& name, bool external) const {
   // breadth first(ish)
   const std::vector<const FunctionDecl*> decls = getFunctionDecls();
   for(const FunctionDecl* fd : decls) {
@@ -109,6 +143,17 @@ const FunctionDecl* ScopeCreator::findFunctionDecl(const std::string& name) cons
   }
   if(this == owner) {
     // this is the module (top-level)
+    if(external) {
+      // this was call came from an outside module stop here
+      return nullptr;
+    }
+    const Module* module = dynamic_cast<const Module*>(this);
+    for(const llvm::StringMapEntry<std::unique_ptr<Module>>& ex : module->getExternals()) {
+      const FunctionDecl* fd = ex.getValue()->findFunctionDecl(name, true);
+      if(fd) {
+	return fd;
+      }
+    }
     return nullptr;
   }
   else {
@@ -116,30 +161,53 @@ const FunctionDecl* ScopeCreator::findFunctionDecl(const std::string& name) cons
   }
 }
 
-const TypeDecl* ScopeCreator::findTypeDecl(const std::string& name) const {
+const Type* ScopeCreator::findType(const std::string& name, bool external) const {
   // breadth first(ish)
-  const std::vector<const TypeDecl*> decls = getTypeDecls();
-  for(const TypeDecl* td : decls) {
-    if(*td->getName() == name) {
-      return td;
+  const std::vector<const Type*> types = getTypes();
+  for(const Type* t : types) {
+    if(t->getName() == name) {
+      return t;
     }
   }
   if(this == owner) {
     // this is the module (top-level)
+    if(external) {
+      // this was call came from an outside module stop here
+      return nullptr;
+    }
+    const Module* module = dynamic_cast<const Module*>(this);
+    for(const llvm::StringMapEntry<std::unique_ptr<Module>>& ex : module->getExternals()) {
+      const Type* t = ex.getValue()->findType(name, true);
+      if(t) {
+	return t;
+      }
+    }
     return nullptr;
   }
   else {
-    return owner->findTypeDecl(name);
+    return owner->findType(name);
   }
 }
 
-const VarDecl* ScopeCreator::findVarDecl(const std::string& name) const {
+const VarDecl* ScopeCreator::findVarDecl(const std::string& name, bool external) const {
   for(const VarDecl* var : ownedVars) {
     if(*var->getName() == name) {
       return var;
     }
   }
   if(owner == this) {
+    // this is the module (top-level)
+    if(external) {
+      // this was call came from an outside module stop here
+      return nullptr;
+    }
+    const Module* module = dynamic_cast<const Module*>(this);
+    for(const llvm::StringMapEntry<std::unique_ptr<Module>>& ex : module->getExternals()) {
+      const VarDecl* vd = ex.getValue()->findVarDecl(name, true);
+      if(vd) {
+	return vd;
+      }
+    }
     return nullptr;
   }
   else {
@@ -154,6 +222,6 @@ const Decl* ScopeCreator::findDecl(const std::string& name) const {
     return found;
   }
   else {
-    return findTypeDecl(name);
+    return findType(name)->getDecl();
   }
 }

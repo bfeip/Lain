@@ -10,7 +10,8 @@ int main(int argc, const char** argv) {
   parser.parse();
   std::unique_ptr<Module> module = parser.stripModule();
 
-  Emitter emitter(std::move(module));
+  llvm::LLVMContext context;
+  Emitter emitter(context, std::move(module));
   emitter.emit();
 
   return 0;

@@ -12,7 +12,7 @@ include_directories(
   "./src/ast/include"
   "./src/parser"
   "./src/emitter"
-  
+
   "./third_party/llvm/include"
   "./third_party/llvm/include/llvm"
   "./build/llvm/include"
@@ -30,12 +30,17 @@ file(GLOB PARSER_SOURCES "./src/parser/*.cpp")
 
 file(GLOB EMITTER_SOURCES "./src/emitter/*.cpp")
 
-add_definitions(-std=c++14 -g)
+file(GLOB LIBS_SOURCES "./src/libs/*.cpp")
 
-#add_executable(Lexer ${LEXER_SOURCES})
-#add_executable(Parser ${PARSER_SOURCES} ${AST_SOURCES} "./src/lexer/lexer.cpp")
-add_executable(Emitter ${EMITTER_SOURCES} ${AST_SOURCES} ${LLVM_IR_SOURCES}
-  "./src/parser/parser.cpp" "./src/lexer/lexer.cpp")
+add_definitions(-std=c++14 -g -O0)
 
-llvm_map_components_to_libnames(llvm_libs support core irreader)
-target_link_libraries(Emitter ${llvm_libs})
+#add_executable(lexer ${LEXER_SOURCES})
+#add_executable(parser ${PARSER_SOURCES} ${AST_SOURCES} "./src/lexer/lexer.cpp")
+#add_executable(emitter ${EMITTER_SOURCES} ${AST_SOURCES} ${LIBS_SOURCES}
+#  "./src/parser/parser.cpp" "./src/lexer/lexer.cpp")
+add_executable(lain ${AST_SOURCES} ${LIBS_SOURCES} "./src/lexer/lexer.cpp"
+  "./src/parser/parser.cpp" "./src/emitter/emitter.cpp" "./src/compiler.cpp")
+
+llvm_map_components_to_libnames(llvm_libs support core irreader linker analysis)
+#target_link_libraries(emitter ${llvm_libs})
+target_link_libraries(lain ${llvm_libs})
