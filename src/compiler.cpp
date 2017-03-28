@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
   // parse all files and all usings
   llvm::StringMap<std::unique_ptr<Module>> translationUnits;
   for(int i = 1; i < argc; i++) {
-    if(translationUnits.find(argv[i]) == translationUnits.end()) {
+    if(translationUnits.find(argv[i]) != translationUnits.end()) {
       continue;
     }
     Parser parser(argv[i], translationUnits);
@@ -56,5 +56,8 @@ int main(int argc, char** argv) {
     modules.push_back(std::move(emitter.stripModule()));
   }
 
+  for(std::unique_ptr<llvm::Module>& module : modules) {
+    module->dump();
+  }
   return 0;
 }

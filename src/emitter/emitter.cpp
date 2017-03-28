@@ -691,7 +691,6 @@ void Emitter::fatalError(const std::string& errstr) {
 
 void Emitter::emit() {
   emitTop();
-  module->dump();
   return;
 }
 
