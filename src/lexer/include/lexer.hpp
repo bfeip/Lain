@@ -23,6 +23,7 @@ public:
   Lexer(std::string filename) : src(filename), line(1), col(1) {
     if(!src) {
       // fuck
+      std::cout << "File " << filename << " could not be opened for reading" << std::endl;
       exit(-2);
     }
   }
