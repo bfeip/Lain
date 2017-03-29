@@ -322,11 +322,15 @@ void Parser::parseIdDecl(Symbol& sym, ScopeCreator* owner) {
   case TOK_OPEN_PAREN:
     // Function or method decl
     {
-      std::unique_ptr<FunctionDecl> ast_fd(new FunctionDecl(owner));
-      FunctionDecl* fd = ast_fd.get();
-      owner->addOwnedFunction(std::move(ast_fd), AM_VOID); // TODO AM stuff
-      fd->setName(std::make_unique<std::string>(name));
-      fd->setReturnType(std::move(qt));
+      FunctionDecl* fd = owner->findFunctionDecl(name);
+      if(fd == nullptr) {
+	// this is a new function decl
+	std::unique_ptr<FunctionDecl> ast_fd(new FunctionDecl(owner));
+	fd = ast_fd.get();
+	owner->addOwnedFunction(std::move(ast_fd), AM_VOID); // TODO AM stuff
+	fd->setName(std::make_unique<std::string>(name));
+	fd->setReturnType(std::move(qt));
+      }
       parseFunctionDeclTop(sym, fd);
       return;
     }
@@ -383,8 +387,6 @@ void Parser::parseFunctionDeclTop(Symbol& sym, FunctionDecl* fd) {
     return;
   case TOK_SEMICOLON:
     // function prototype
-    storeError("Function prototypes are not allowed", sym);
-    consumeObject(sym);
     return;
   case TOK_OPEN_BRACKET:
     // function definition
@@ -1468,14 +1470,21 @@ std::unique_ptr<AstNode> Parser::parseIdStmt(Symbol& sym, ScopeCreator* owner) {
       case TOK_OPEN_PAREN:
         {
           // function decl
-          std::unique_ptr<FunctionDecl> ret(new FunctionDecl(owner));
-          std::unique_ptr<QualType> qt(new QualType(t));
-          qt->setConst(qtConst);
-          qt->setStatic(qtStatic);
-          ret->setReturnType(std::move(qt));
-          ret->setName(std::make_unique<std::string>(second));
-          parseFunctionDeclTop(sym, ret.get());
-          return std::move(ret);
+	  FunctionDecl* fd = owner->findFunctionDecl(second);
+	  if(fd == nullptr) {
+	    std::unique_ptr<FunctionDecl> ret(new FunctionDecl(owner));
+	    std::unique_ptr<QualType> qt(new QualType(t));
+	    qt->setConst(qtConst);
+	    qt->setStatic(qtStatic);
+	    ret->setReturnType(std::move(qt));
+	    ret->setName(std::make_unique<std::string>(second));
+	    parseFunctionDeclTop(sym, ret.get());
+	    return ret;
+	  }
+	  else {
+	    parseFunctionDeclTop(sym, fd);
+	    return std::unique_ptr<AstNode>(nullptr);
+	  }
         }
       default:
         storeError("WTF in unknown stmt", sym);
