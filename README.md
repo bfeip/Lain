@@ -19,23 +19,35 @@ Haha, good luck...
 The build system currently sucks and I'm sorry, but I'm just learning cmake so bear with me.
 
 You'll need the llvm source. If you didn't clone recursively you'll have to update the submodules.
-    git submodule update   
+
+`git submodule update`   
 
 In the Lain source directory make the build directory to build Lain in.
-    mkdir build
-    cd build
+
+```
+mkdir build
+cd build
+```
 
 Make a directory to build llvm in.
-    mkdir llvm
-    cd llvm
+
+```
+mkdir llvm
+cd llvm
+```
 
 Build llvm (use multithreading and go and have lunch or something because this takes a while)
-    cmake ../../third_party/llvm/
-    make -j4
+
+```
+cmake ../../third_party/llvm/
+make -j4
+```
 
 Go back up to the top of the build directory and build Lain
-    cd ..
-    cmake ..
-    make
 
+```
+cd ..
+cmake ..
+make
+```
 I know this system sucks. If you really really hate it maybe you would consider implementing a better system. I'm lazy and bad with build systems, so I'd appreciate it.
