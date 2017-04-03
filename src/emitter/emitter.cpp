@@ -626,7 +626,8 @@ llvm::Value* Emitter::emitLiteralExpr(const LiteralExpr* le) {
     con = llvm::ConstantInt::getSigned(llvm::IntegerType::get(context, 8), le->getLiteral()[0]);
     return con;
   case LK_STR:
-    // ignoring this until string class is created
+    con = llvm::ConstantDataArray::getString(context, le->getLiteral());
+    return con;
   default:
     fatalError("Missing case in getLiteral in emitter");
   }

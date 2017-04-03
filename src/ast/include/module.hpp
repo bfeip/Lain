@@ -53,8 +53,9 @@ public:
     std::unique_ptr<Type> LongLong(new Type("longlong", nullptr));
     std::unique_ptr<Type> ULongLong(new Type("ulonglong", nullptr));
     std::unique_ptr<Type> Float(new Type("float", nullptr));
-    std::unique_ptr<Type> Double(new Type("Double", nullptr));
-    std::unique_ptr<Type> LongDouble(new Type("LongDouble", nullptr));
+    std::unique_ptr<Type> Double(new Type("double", nullptr));
+    std::unique_ptr<Type> LongDouble(new Type("longdouble", nullptr));
+    std::unique_ptr<Type> String(new Type("string", nullptr));
     addOwnedType(std::move(Void), AM_VOID);
     addOwnedType(std::move(Bool), AM_VOID);
     addOwnedType(std::move(Byte), AM_VOID);
@@ -70,6 +71,7 @@ public:
     addOwnedType(std::move(Float), AM_VOID);
     addOwnedType(std::move(Double), AM_VOID);
     addOwnedType(std::move(LongDouble), AM_VOID);
+    addOwnedType(std::move(String), AM_VOID);
   }
 
   const std::string& getName() const { return name; }

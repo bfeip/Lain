@@ -524,14 +524,24 @@ void Parser::parseCompoundStmt(Symbol& sym, CompoundStmt* cs) {
 
     case TOK_ELSE:
       {
-        if(!dynamic_cast<IfStmt*>(cs->getStmts().back())) {
+	IfStmt* ifstmt = dynamic_cast<IfStmt*>(cs->getStmts().back());
+	while(ElseStmt* elsestmt = ifstmt->getElse()) {
+	  // otherwise this'd get the FIRST if stmt that appered, we want the LAST
+	  ifstmt = dynamic_cast<IfStmt*>(elsestmt->getBody());
+	  if(!ifstmt) {
+	    storeError("Else ststement without if", sym);
+	    break;
+	  }
+	}
+	    
+        if(!ifstmt) {
           storeError("Else statement without if", sym);
           break;
         }
         std::unique_ptr<ElseStmt> stmt(new ElseStmt(cs));
-        stmt->setIf(dynamic_cast<IfStmt*>(cs->getStmts().back()));
+        stmt->setIf(ifstmt);
         parseElseStmt(sym, stmt.get());
-	cs->addStmt(std::move(stmt));
+	ifstmt->setElse(std::move(stmt));
       }
       break;
 
