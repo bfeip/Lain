@@ -127,6 +127,9 @@ void Emitter::emitFunctionDec(const FunctionDecl* fd) {
 }
 
 void Emitter::emitFunctionDef(const FunctionDecl* fd) {
+  if(*fd->getName() == "print") {
+    return;
+  }
   llvm::Function* f = module->getFunction(*fd->getName());
   functionStack.push(f);
 
@@ -583,7 +586,12 @@ llvm::Value* Emitter::emitUnaryOperationExpr(const UnaryOperationExpr* uoe) {
 
 llvm::Value* Emitter::emitFunctionCallExpr(const FunctionCallExpr* fce) {
   // Too easy, not accounting for function overrideing
-  return builder.CreateCall(module->getFunction(*fce->getFunc()->getName()));
+  llvm::Function* func = module->getFunction(*fce->getFunc()->getName());
+  if(!func) {
+    emitFunctionDec(fce->getFunc());
+    func = module->getFunction(*fce->getFunc()->getName());
+  }
+  return builder.CreateCall(func);
 }
 
 llvm::Value* Emitter::emitVarInstanceExpr(const VarInstanceExpr* vie) {

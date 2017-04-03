@@ -6,7 +6,7 @@
 std::vector<std::unique_ptr<llvm::Module>> getStdlibs(llvm::LLVMContext& context) {
   llvm::SMDiagnostic smd;
   std::vector<std::unique_ptr<llvm::Module>> ret;
-  ret.push_back(llvm::parseIRFile("builtin.ll", smd, context));
+  ret.push_back(llvm::parseIRFile("../src/libs/builtin.ll", smd, context));
   
   return ret;
 }
@@ -35,6 +35,10 @@ int main(int argc, char** argv) {
 
   // parse all files and all usings
   llvm::StringMap<std::unique_ptr<Module>> translationUnits;
+  Parser parser("../src/libs/builtin.lain", translationUnits);
+  parser.parse();
+  std::unique_ptr<Module> builtins = parser.stripModule();
+  translationUnits.insert(std::make_pair("../src/libs/builtin.lain", std::move(builtins)));
   for(int i = 1; i < argc; i++) {
     if(translationUnits.find(argv[i]) != translationUnits.end()) {
       continue;
@@ -48,16 +52,18 @@ int main(int argc, char** argv) {
   }
 
   llvm::LLVMContext context;
-  std::vector<std::unique_ptr<llvm::Module>> modules;
-  getStdlibs(context);
+  llvm::Module final("a.ll", context);
+  llvm::Linker linker(final);
+  std::vector<std::unique_ptr<llvm::Module>> modules = getStdlibs(context);
+  for(std::unique_ptr<llvm::Module>& module : modules) {
+    linker.linkInModule(std::move(module));
+  }
   for(llvm::StringMapEntry<std::unique_ptr<Module>>& tu : translationUnits) {
     Emitter emitter(context, tu.getValue().get());
     emitter.emit();
-    modules.push_back(std::move(emitter.stripModule()));
+    linker.linkInModule(std::move(emitter.stripModule()));
   }
 
-  for(std::unique_ptr<llvm::Module>& module : modules) {
-    module->dump();
-  }
+  final.dump();
   return 0;
 }
