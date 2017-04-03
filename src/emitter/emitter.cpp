@@ -276,14 +276,17 @@ void Emitter::emitVarDeclStmt(const VarDeclStmt* vds) {
   return;
 }
 
-void Emitter::emitIfStmt(const IfStmt* is) {
+void Emitter::emitIfStmt(const IfStmt* is, llvm::BasicBlock* exit) {
   llvm::Value* condition = emitExpr(is->getCondition());
-  llvm::BasicBlock* endBlock = llvm::BasicBlock::Create(context, "if_exit",
-							functionStack.top());
+  llvm::BasicBlock* endBlock = exit;
   llvm::BasicBlock* ifBlock = llvm::BasicBlock::Create(context, "if",
 						       functionStack.top());
   llvm::BasicBlock* elseBlock = nullptr;
   const ElseStmt* es = is->getElse();
+
+  if(!endBlock) {
+    endBlock = llvm::BasicBlock::Create(context, "if_exit", functionStack.top());
+  }
 
   // create apropriate conditional br
   if(es) {
@@ -297,28 +300,25 @@ void Emitter::emitIfStmt(const IfStmt* is) {
   // emit if body
   builder.SetInsertPoint(ifBlock);
   emitStmt(is->getBody());
-  if(ifBlock->back().isTerminator()) {
-    // if the last instruction properly ends the block
-    builder.CreateUnreachable();
-  }
-  else {
+  if(!ifBlock->back().isTerminator()) {
     // block not properly ended
     builder.CreateBr(endBlock);
-    builder.CreateUnreachable();
   }
 
   // emit else body if there is one
   if(es) {
+    const Stmt* body = es->getBody();
     builder.SetInsertPoint(elseBlock);
-    emitStmt(es->getBody());
-    if(elseBlock->back().isTerminator()) {
-      // if the last instruction properly ends the block
-      builder.CreateUnreachable();
+    if(!dynamic_cast<const IfStmt*>(body)) {
+      emitStmt(es->getBody());
     }
     else {
+      // We must make sure we leave to this if's exit block
+      emitIfStmt(dynamic_cast<const IfStmt*>(body), endBlock);
+    }
+    if(!elseBlock->back().isTerminator()) {
       // block not properly ended
       builder.CreateBr(endBlock);
-      builder.CreateUnreachable();
     }
   }
 

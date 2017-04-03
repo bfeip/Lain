@@ -42,7 +42,7 @@ private:
   void emitStmt(const Stmt* stmt);
   void emitCompoundStmt(const CompoundStmt* cs);
   void emitVarDeclStmt(const VarDeclStmt* vds);
-  void emitIfStmt(const IfStmt* is);
+  void emitIfStmt(const IfStmt* is, llvm::BasicBlock* exit = nullptr);
   void emitWhileStmt(const WhileStmt* ws);
   void emitForStmt(const ForStmt* fs);
   //void emitSwitchStmt(const SwitchStmt* ss); TODO
