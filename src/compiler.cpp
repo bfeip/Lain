@@ -2,12 +2,14 @@
 #include "Linker/Linker.h"
 #include "IRReader/IRReader.h"
 #include "Support/SourceMgr.h"
+#include "Support/FileSystem.h"
 
 std::vector<std::unique_ptr<llvm::Module>> getStdlibs(llvm::LLVMContext& context) {
   llvm::SMDiagnostic smd;
   std::vector<std::unique_ptr<llvm::Module>> ret;
-  ret.push_back(llvm::parseIRFile("../src/libs/builtin.ll", smd, context));
-  
+  std::unique_ptr<llvm::Module> mod = llvm::parseIRFile("../src/libs/builtin.ll", smd, context);
+  ret.push_back(std::move(mod));
+
   return ret;
 }
 
@@ -61,9 +63,18 @@ int main(int argc, char** argv) {
   for(llvm::StringMapEntry<std::unique_ptr<Module>>& tu : translationUnits) {
     Emitter emitter(context, tu.getValue().get());
     emitter.emit();
-    linker.linkInModule(std::move(emitter.stripModule()));
+    std::unique_ptr<llvm::Module> module = emitter.stripModule();
+    linker.linkInModule(std::move(module));
   }
 
-  final.dump();
+  std::error_code ec;
+  llvm::raw_fd_ostream out("./a.ll", ec, llvm::sys::fs::F_None);
+  if(ec) {
+    std::cout << "Could not open a.ll for output" << std::endl;
+    std::cout << ec.message() << std::endl;
+    return -2;
+  }
+  final.print(out, nullptr);
+  
   return 0;
 }
