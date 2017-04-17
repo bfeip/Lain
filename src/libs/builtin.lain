@@ -1,1 +1,1 @@
-void print(string);
+void print(string str);

@@ -120,8 +120,7 @@ void Emitter::emitFunctionDec(const FunctionDecl* fd) {
   if(!functionName) {
     fatalError("All functions must have names");
   }
-  llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage,
-					     *functionName, module.get());
+  module->getOrInsertFunction(*functionName, ft);
 
   return;
 }
@@ -442,9 +441,11 @@ void Emitter::emitContinueStmt(const ContinueStmt* cs) {
 }
 
 void Emitter::emitReturnStmt(const ReturnStmt* rs) {
+  const llvm::Function* func = functionStack.top();
   if(const Expr* retExpr = rs->getValue()) {
-    llvm::Value* ret = emitExpr(rs->getValue());
-    builder.CreateRet(ret);
+    llvm::Value* val = emitExpr(rs->getValue());
+    val = castType(val, func->getReturnType());
+    builder.CreateRet(val);
   }
   else {
     builder.CreateRetVoid();
@@ -587,11 +588,16 @@ llvm::Value* Emitter::emitUnaryOperationExpr(const UnaryOperationExpr* uoe) {
 llvm::Value* Emitter::emitFunctionCallExpr(const FunctionCallExpr* fce) {
   // Too easy, not accounting for function overrideing
   llvm::Function* func = module->getFunction(*fce->getFunc()->getName());
+  const std::vector<const Expr*> lainArgs = fce->getArgs();
+  std::vector<llvm::Value*> llvmArgs;
+  for(const Expr* lainArg : lainArgs) {
+    llvmArgs.push_back(emitExpr(lainArg));
+  }
   if(!func) {
     emitFunctionDec(fce->getFunc());
     func = module->getFunction(*fce->getFunc()->getName());
   }
-  return builder.CreateCall(func);
+  return builder.CreateCall(func, llvmArgs);
 }
 
 llvm::Value* Emitter::emitVarInstanceExpr(const VarInstanceExpr* vie) {
@@ -626,8 +632,7 @@ llvm::Value* Emitter::emitLiteralExpr(const LiteralExpr* le) {
     con = llvm::ConstantInt::getSigned(llvm::IntegerType::get(context, 8), le->getLiteral()[0]);
     return con;
   case LK_STR:
-    con = llvm::ConstantDataArray::getString(context, le->getLiteral());
-    return con;
+    return builder.CreateGlobalStringPtr(le->getLiteral());
   default:
     fatalError("Missing case in getLiteral in emitter");
   }
@@ -682,6 +687,9 @@ llvm::Value* Emitter::castInteger(llvm::Value* val, llvm::IntegerType* t) {
 }
 
 llvm::Type* Emitter::findType(const std::string& name) {
+  if(name == "string") {
+    return llvm::Type::getInt8PtrTy(context);
+  }
   llvm::StringMap<llvm::StructType*>::iterator clas = classMap.find(name);
   if(clas != classMap.end()) {
     return clas->getValue();

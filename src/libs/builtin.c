@@ -2,6 +2,8 @@
 static int puts(const char* str);
 
 // builtins
-void print(const char* str) {
+/* later the print stuff will be conjoined into one function */
+void printStr(const char* str) {
   puts(str);
 }
+    

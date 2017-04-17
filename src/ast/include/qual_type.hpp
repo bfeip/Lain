@@ -2,7 +2,7 @@
 #define QUAL_TYPE_HPP
 
 #include "ast_shared.hpp"
-#include "type.hpp"
+class Type;
 
 class QualType {
 private:
@@ -24,5 +24,7 @@ public:
   void setConst(bool b) { typeBits[0] = b; }
   void setStatic(bool b) { typeBits[1] = b; }
 };
+
+#include "type.hpp"
 
 #endif

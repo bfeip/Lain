@@ -1,6 +1,10 @@
 #ifndef RETURN_STMT_HPP
 #define RETURN_STMT_HPP
 
+#include "stmt.hpp"
+#include "scope_creator.hpp"
+#include "expr.hpp"
+
 class ReturnStmt : virtual public Stmt, virtual public ScopeCreator /* ikr */ {
 private:
   std::unique_ptr<Expr> value;
