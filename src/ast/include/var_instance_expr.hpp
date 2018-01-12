@@ -9,6 +9,8 @@
 class VarInstanceExpr : virtual public Expr {
 private:
   VarDecl* var;
+
+  std::string varName;
 public:
   VarInstanceExpr() = delete;
   VarInstanceExpr(ScopeCreator* owner, Expr* pe, VarDecl* vd) :
@@ -21,6 +23,10 @@ public:
 
   std::string* getName();
   const std::string* getName() const;
+
+  std::string& getVarName() { return varName; }
+  const std::string& getVarName() const { return varName; }
+  void setVarName(const std::string& s) { varName = s; }
 };
 
 #endif

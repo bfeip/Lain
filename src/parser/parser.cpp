@@ -41,15 +41,29 @@ void Parser::parseClassTop(Symbol& sym, ScopeCreator* owner) {
   std::unique_ptr<ClassDecl> ast_classdecl(new ClassDecl(owner));
   ClassDecl* classdecl = ast_classdecl.get(); // messy, but don't want to use new
   bool anon = false;
-  std::unique_ptr<Type> type(new Type(std::string(), std::move(ast_classdecl)));
-  owner->addOwnedType(std::move(type), AM_VOID);
 
   nextSignificantToken(sym);
   if(sym.getToken() == TOK_IDENTIFIER) {
     // named class
     const std::string& classname = *sym.getSymbolData()->getAsString();
-    if(const Decl* d = owner->findDecl(classname)) {
-      // decl of this type exists
+
+    // join decl and type
+    Type* foundType = owner->findType(classname);
+    if(foundType) {
+      // this is a decl for forward declared type, connect decl and type
+      foundType->setDecl(std::move(ast_classdecl));
+      classdecl->setType(foundType);
+    }
+    else {
+      // this is a decl for new type, create new type and link to scope tree
+      std::unique_ptr<Type> type(new Type(classname, std::move(ast_classdecl)));
+      classdecl->setType(type.get());
+      owner->addOwnedType(std::move(type), AM_VOID);
+    }
+
+    const Decl* foundDecl = owner->findDecl(classname);
+    if(foundDecl && foundDecl != classdecl) {
+      // decl for this type exists
       storeError("Name collision", sym);
       consumeObject(sym);
       return;
@@ -336,6 +350,7 @@ void Parser::parseIdDecl(Symbol& sym, ScopeCreator* owner) {
     }
   case TOK_COMMA:
   case TOK_ASSIGN:
+  case TOK_SEMICOLON:
     // global var decl stmt or member decl stmt
     {
       std::unique_ptr<VarDeclStmt> vds(new VarDeclStmt(owner));
@@ -751,40 +766,125 @@ std::unique_ptr<Expr> Parser::parseExpr(Symbol& sym, std::string* id,
   }
 
   // by now we have either a literal or an identifier
-  // we're ignoring the dot operator and array access here for now
+  // we're ignoring array access here for now
   if(identifier != "") {
     // this is a function call or a variable
+    Decl* decl = nullptr;
+    if(sym.getToken() == TOK_DOT) {
+      // this will be a series of identifiers, we will try to find the exact
+      // thing being referenced, else we will store the name including the dots
+      std::string subidentifier = identifier;
+      Decl* previousDecl = owner->findDecl(subidentifier);
+      while(sym.getToken() == TOK_DOT) {
+	identifier += std::string(".");
+	nextSignificantToken(sym);
+	if(sym.getToken() != TOK_IDENTIFIER) {
+	  storeError("Expected identifier after dot", sym);
+	  consumeObject(sym);
+	  return std::unique_ptr<Expr>(nullptr);
+	}
+	subidentifier = *sym.getSymbolData()->getAsString();
+	identifier += subidentifier;
+	if(previousDecl) {
+	  // If the decl chain is complete so far.
+	  if(VarDecl* varDecl = dynamic_cast<VarDecl*>(previousDecl)) {
+	    // if this is a var decl we need the decl to reference the class
+	    // decl instead
+	    TypeDecl* typeDecl = varDecl->getType()->getType()->getDecl();
+	    previousDecl = dynamic_cast<ClassDecl*>(typeDecl);
+	    if(!previousDecl) {
+	      storeError("Attempted to get member of a variable that is not "
+			 "a instance of a class", sym);
+	      consumeObject(sym);
+	      return std::unique_ptr<Expr>(nullptr);
+	    }
+	  }
+	  ScopeCreator* scope = dynamic_cast<ScopeCreator*>(previousDecl);
+	  if(!scope) {
+	    storeError("Attempted to look for something in a thing that does"
+		       " not create a scope", sym);
+	    consumeObject(sym);
+	    return std::unique_ptr<Expr>(nullptr);
+	  }
+	  Decl* found = scope->findDecl(subidentifier);
+	  if(!found) {
+	    // this decl has not been defined (yet) we will store the name
+	    // of the decl in the call / var inst instead
+	    previousDecl = nullptr;
+	  }
+	  else {
+	    // store decl and go again if needed
+	    previousDecl = found;
+	  }
+	}
+	nextSignificantToken(sym);
+      }
+      if(previousDecl) {
+	decl = previousDecl;
+      }
+    }
+    else {
+      decl = owner->findDecl(identifier);
+    }
     if(sym.getToken() == TOK_OPEN_PAREN) {
-      FunctionDecl* funcDecl = owner->findFunctionDecl(identifier);
+      FunctionDecl* funcDecl = dynamic_cast<FunctionDecl*>(decl);
+      if(!funcDecl) {
+	storeError("Attempt to call a non-function thing", sym);
+	consumeObject(sym);
+	return std::unique_ptr<Expr>(nullptr);
+      }
       std::unique_ptr<FunctionCallExpr> func(new FunctionCallExpr(owner, parentExpr, funcDecl));
+      if(!funcDecl) {
+	// the funcDecl we found was null, thus we store the name of the
+	// func being called so we can find it later
+	func->setFuncName(identifier);
+      }
       nextSignificantToken(sym);
-      while(true) {
-        // grab args seperated by commas and ending in a close paren
-        std::unique_ptr<Expr> arg = parseExpr(sym, nullptr, owner, func.get());
-	if(arg) {
-	  func->addArg(std::move(arg));
+      if(sym.getToken() != TOK_CLOSE_PAREN) {
+	while(true) {
+	  // grab args seperated by commas and ending in a close paren
+	  std::unique_ptr<Expr> arg = parseExpr(sym, nullptr, owner, func.get());
+	  if(arg) {
+	    func->addArg(std::move(arg));
+	  }
+	  else {
+	    break;
+	  }
+	  if(sym.getToken() == TOK_COMMA) {
+	    nextSignificantToken(sym);
+	    continue;
+	  }
+	  else if(sym.getToken() == TOK_CLOSE_PAREN) {
+	    nextSignificantToken(sym);
+	    break;
+	  }
+	  else {
+	    storeError("Unexpected token in argument", sym);
+	    consumeObject(sym);
+	    return std::unique_ptr<Expr>(nullptr);
+	  }
 	}
-	else {
-	  break;
-	}
-        if(sym.getToken() == TOK_COMMA) {
-          nextSignificantToken(sym);
-          continue;
-        }
-        else if(sym.getToken() == TOK_CLOSE_PAREN) {
-          nextSignificantToken(sym);
-          break;
-        }
-        else {
-          storeError("Unexpected token in argument", sym);
-          consumeObject(sym);
-          return std::unique_ptr<Expr>(nullptr);
-        }
+      }
+      else {
+	// there are no args, move on next question
+	nextSignificantToken(sym);
       }
       ret = std::move(func);
     }
     else {
+      VarDecl* varDecl = dynamic_cast<VarDecl*>(decl);
+      if(!varDecl) {
+	storeError("Attempt to create a variable instance with something that"
+		   " is not a var", sym);
+	consumeObject(sym);
+	return std::unique_ptr<Expr>(nullptr);
+      }
       ret = std::make_unique<VarInstanceExpr>(owner, parentExpr, owner->findVarDecl(identifier));
+      if(!varDecl) {
+	// the varDecl we found was null, thus we store the name of the
+	// var being used so we can find it later
+	dynamic_cast<VarInstanceExpr*>(ret.get())->setVarName(identifier);
+      }
     }
   }
   else if(literal != "") {

@@ -192,7 +192,7 @@ void Emitter::emitMethod(const FunctionDecl* fd, llvm::StructType* self) {
   int i = 0;
   f->args().begin()->setName("this");
   auto argStart = f->args().begin();
-  for(auto arg = argStart++; arg != f->args().end(); arg++) {
+  for(auto arg = ++argStart; arg != f->args().end(); arg++) {
     arg->setName(*lainParams[i]->getName());
   }
 

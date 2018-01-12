@@ -1,0 +1,6 @@
+int main() {
+  string str = prompt("Enter the string to be echoed: ");
+  print(str);
+
+  return 0;
+}

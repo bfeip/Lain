@@ -15,6 +15,7 @@ private:
 
   // type maps
   llvm::StringMap<llvm::Type*> primitiveMap;
+  llvm::StringMap<llvm::Type*> builtinMap;
   llvm::StringMap<llvm::StructType*> classMap;
   llvm::StringMap<llvm::FunctionType*> functionTypeMap;
 
@@ -56,6 +57,10 @@ private:
   llvm::Value* emitFunctionCallExpr(const FunctionCallExpr* fce);
   llvm::Value* emitVarInstanceExpr(const VarInstanceExpr* vie);
   llvm::Value* emitLiteralExpr(const LiteralExpr* le);
+  
+  llvm::Value* emitAssign(llvm::Value* ptr, llvm::Value* val);
+
+  void stringCpy(llvm::Value* to, llvm::Value* from);
 
   llvm::Value* removeRefs(llvm::Value* val);
   
@@ -64,6 +69,7 @@ private:
 						 llvm::Value* l, llvm::Value* r);
   llvm::Value* castType(llvm::Value* val, llvm::Type* t);
   llvm::Value* castInteger(llvm::Value* val, llvm::IntegerType* t);
+  llvm::Value* castPointer(llvm::Value* val, llvm::PointerType* t);
 
   llvm::Type* findType(const std::string& name);
   void fatalError(const std::string& errstr);
@@ -88,6 +94,8 @@ public:
     primitiveMap.insert(std::make_pair("float", llvm::Type::getFloatTy(context)));
     primitiveMap.insert(std::make_pair("double", llvm::Type::getDoubleTy(context)));
     primitiveMap.insert(std::make_pair("longdouble", llvm::Type::getFP128Ty(context)));
+
+    builtinMap.insert(std::make_pair("string", llvm::Type::getInt8PtrTy(context)));
   }
 
   void emit();

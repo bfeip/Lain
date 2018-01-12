@@ -104,8 +104,14 @@ Decl* ScopeCreator::findDecl(const std::string& name) {
   if(Decl* found = findFunctionDecl(name)) {
     return found;
   }
-  else {
+  else if(Type* foundType = findType(name)) {
     return findType(name)->getDecl();
+  }
+  else if(VarDecl* foundVar = findVarDecl(name)) {
+    return foundVar;
+  }
+  else {
+    return nullptr;
   }
 }
 
@@ -221,7 +227,13 @@ const Decl* ScopeCreator::findDecl(const std::string& name) const {
   if(const Decl* found = findFunctionDecl(name)) {
     return found;
   }
-  else {
+  else if(const Type* foundType = findType(name)) {
     return findType(name)->getDecl();
+  }
+  else if(const VarDecl* foundVar = findVarDecl(name)) {
+    return foundVar;
+  }
+  else {
+    return nullptr;
   }
 }

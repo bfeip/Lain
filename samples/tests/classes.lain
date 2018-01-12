@@ -1,0 +1,22 @@
+class A {
+  int a;
+  int b;
+
+  int getA() {
+    return a;
+  }
+  int getB() {
+    return b;
+  }
+};
+
+int main() {
+  A a;
+  a.a = 1;
+  a.b = 2;
+
+  a.getA();
+  a.getB();
+
+  return 0;
+}

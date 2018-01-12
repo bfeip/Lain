@@ -1,1 +1,2 @@
 void print(string str);
+string prompt(string str);
