@@ -32,13 +32,18 @@ file(GLOB EMITTER_SOURCES "./src/emitter/*.cpp")
 
 file(GLOB LIBS_SOURCES "./src/libs/*.cpp")
 
+file(GLOB LEXER_HEADERS "./src/lexer/include/*.hpp")
+file(GLOB AST_HEADERS "./src/ast/include/*.hpp")
+file(GLOB PARSER_HEADERS "./src/parser/*.hpp")
+
 add_definitions(-std=c++14 -g -O0)
 
 #add_executable(lexer ${LEXER_SOURCES})
 #add_executable(parser ${PARSER_SOURCES} ${AST_SOURCES} "./src/lexer/lexer.cpp")
 #add_executable(emitter ${EMITTER_SOURCES} ${AST_SOURCES} ${LIBS_SOURCES}
 #  "./src/parser/parser.cpp" "./src/lexer/lexer.cpp")
-add_executable(lain ${AST_SOURCES} ${LIBS_SOURCES} "./src/lexer/lexer.cpp"
+add_executable(lain ${AST_SOURCES} ${LIBS_SOURCES} ${ALL_HEADERS}
+  ${LEXER_HEADERS} ${AST_HEADERS} ${PARSER_HEADERS} "./src/lexer/lexer.cpp"
   "./src/parser/parser.cpp" "./src/emitter/emitter.cpp" "./src/compiler.cpp")
 
 llvm_map_components_to_libnames(llvm_libs support core irreader linker analysis)
