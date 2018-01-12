@@ -27,7 +27,10 @@ void Emitter::emitTop() {
   }
   for(const FunctionDecl* func : funcs) {
     // emit definitions
-    emitFunctionDef(func);
+    if (func->getBody()) {
+      // there could be a problem if there is a funtion with no decl
+      emitFunctionDef(func);
+    }
   }
 
   return;
@@ -126,9 +129,6 @@ void Emitter::emitFunctionDec(const FunctionDecl* fd) {
 }
 
 void Emitter::emitFunctionDef(const FunctionDecl* fd) {
-  if(*fd->getName() == "print") {
-    return;
-  }
   llvm::Function* f = module->getFunction(*fd->getName());
   functionStack.push(f);
 
