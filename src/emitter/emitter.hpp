@@ -7,7 +7,7 @@
 
 class Emitter {
 private:
-  const Module* tu;
+  Module* tu;
   
   llvm::LLVMContext& context;
   llvm::IRBuilder<> builder;
@@ -32,20 +32,20 @@ private:
 
   void emitGlobalVar(const VarDecl* vd);
 
-  void emitType(const TypeDecl* td);
+  void emitType(TypeDecl* td);
   
-  void emitClass(const ClassDecl* cd);
+  void emitClass(ClassDecl* cd);
   //void emitEnum(const EnumDecl* ed); TODO
   void emitFunctionDec(const FunctionDecl* fd);
-  void emitFunctionDef(const FunctionDecl* fd);
-  void emitMethod(const FunctionDecl* fd, llvm::StructType* self);
+  void emitFunctionDef(FunctionDecl* fd);
+  void emitMethod(FunctionDecl* fd, llvm::StructType* self);
 
-  void emitStmt(const Stmt* stmt);
-  void emitCompoundStmt(const CompoundStmt* cs);
-  void emitVarDeclStmt(const VarDeclStmt* vds);
-  void emitIfStmt(const IfStmt* is, llvm::BasicBlock* exit = nullptr);
-  void emitWhileStmt(const WhileStmt* ws);
-  void emitForStmt(const ForStmt* fs);
+  void emitStmt(Stmt* stmt);
+  void emitCompoundStmt(CompoundStmt* cs);
+  void emitVarDeclStmt(VarDeclStmt* vds);
+  void emitIfStmt(IfStmt* is, llvm::BasicBlock* exit = nullptr);
+  void emitWhileStmt(WhileStmt* ws);
+  void emitForStmt(ForStmt* fs);
   //void emitSwitchStmt(const SwitchStmt* ss); TODO
   void emitBreakStmt(const BreakStmt* bs);
   void emitContinueStmt(const ContinueStmt* cs);
@@ -75,7 +75,7 @@ private:
   void fatalError(const std::string& errstr);
 public:
   Emitter() = delete;
-  Emitter(llvm::LLVMContext& c, const Module* tu) :
+  Emitter(llvm::LLVMContext& c, Module* tu) :
     tu(tu), context(c), builder(c),
     module(new llvm::Module(tu->getName(), c)) {
     

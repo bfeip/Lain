@@ -6,8 +6,8 @@ void Emitter::emitTop() {
    * may eventually end up doing all the declarations first and the 
    * definitions later. If I end up choosing to do that this is where
    * I'll insert a emitDecls call */
-  const std::vector<const Type*>& types = tu->getTypes();
-  for(const Type* type : types) {
+  const std::vector<Type*>& types = tu->getTypes();
+  for(Type* type : types) {
     if(!type->isPrimitive()) {
       emitType(type->getDecl());
     }
@@ -20,12 +20,12 @@ void Emitter::emitTop() {
   }
 
   // emit FuntionDecls last
-  const std::vector<const FunctionDecl*>& funcs = tu->getFunctionDecls();
+  const std::vector<FunctionDecl*>& funcs = tu->getFunctionDecls();
   for(const FunctionDecl* func : funcs) {
     // emit declatarions
     emitFunctionDec(func);
   }
-  for(const FunctionDecl* func : funcs) {
+  for(FunctionDecl* func : funcs) {
     // emit definitions
     if (func->getBody()) {
       // there could be a problem if there is a funtion with no decl
@@ -47,8 +47,8 @@ void Emitter::emitGlobalVar(const VarDecl* vd) {
   return;
 } 
 
-void Emitter::emitType(const TypeDecl* td) {
-  if(const ClassDecl* cd = dynamic_cast<const ClassDecl*>(td)) {
+void Emitter::emitType(TypeDecl* td) {
+  if(ClassDecl* cd = dynamic_cast<ClassDecl*>(td)) {
     emitClass(cd);
     return;
   }
@@ -60,7 +60,7 @@ void Emitter::emitType(const TypeDecl* td) {
   return;
 }
 
-void Emitter::emitClass(const ClassDecl* cd) {
+void Emitter::emitClass(ClassDecl* cd) {
   llvm::StructType* s;
   if(!cd->getName() || *cd->getName() == "") {
     // anonomous class
@@ -78,16 +78,16 @@ void Emitter::emitClass(const ClassDecl* cd) {
   }
 
   // emit contained types
-  const std::vector<const Type*>& types = cd->getTypes();
-  for(const Type* type : types) {
+  const std::vector<Type*>& types = cd->getTypes();
+  for(Type* type : types) {
     if(!type->isPrimitive()) {
       emitType(type->getDecl());
     }
   }
 
   // emit methods
-  const std::vector<const FunctionDecl*>& funcs = cd->getFunctionDecls();
-  for(const FunctionDecl* fd : funcs) {
+  const std::vector<FunctionDecl*>& funcs = cd->getFunctionDecls();
+  for(FunctionDecl* fd : funcs) {
     emitMethod(fd, s);
   }
   
@@ -128,7 +128,7 @@ void Emitter::emitFunctionDec(const FunctionDecl* fd) {
   return;
 }
 
-void Emitter::emitFunctionDef(const FunctionDecl* fd) {
+void Emitter::emitFunctionDef(FunctionDecl* fd) {
   llvm::Function* f = module->getFunction(*fd->getName());
   functionStack.push(f);
 
@@ -136,7 +136,7 @@ void Emitter::emitFunctionDef(const FunctionDecl* fd) {
   llvm::BasicBlock* bb = llvm::BasicBlock::Create(context, "entry", f);
   builder.SetInsertPoint(bb);
   int i = 0;
-  const std::vector<const VarDecl*> lainParams = fd->getParams();
+  const std::vector<VarDecl*> lainParams = fd->getParams();
   for(auto& arg : f->args()) {
     arg.setName(*lainParams[i++]->getName());
   }
@@ -156,12 +156,12 @@ void Emitter::emitFunctionDef(const FunctionDecl* fd) {
 
 }
 
-void Emitter::emitMethod(const FunctionDecl* fd, llvm::StructType* self) {
+void Emitter::emitMethod(FunctionDecl* fd, llvm::StructType* self) {
   // get param types
-  const std::vector<const VarDecl*>& lainParams = fd->getParams();
+  const std::vector<VarDecl*>& lainParams = fd->getParams();
   std::vector<llvm::Type*> llvmParams;
   llvmParams.push_back(self); // add 'this' param
-  for(const VarDecl* vd : lainParams) {
+  for(VarDecl* vd : lainParams) {
     // find Type of vd (not QualType)
     llvm::Type* llvmType = findType(vd->getType()->getType()->getName());
     if(!llvmType) {
@@ -211,20 +211,20 @@ void Emitter::emitMethod(const FunctionDecl* fd, llvm::StructType* self) {
   return;
 }
 
-void Emitter::emitStmt(const Stmt* stmt) {
+void Emitter::emitStmt(Stmt* stmt) {
   if(const Expr* expr = dynamic_cast<const Expr*>(stmt)) {
     emitExpr(expr);
   }
-  else if(const VarDeclStmt* varDeclStmt = dynamic_cast<const VarDeclStmt*>(stmt)) {
+  else if(VarDeclStmt* varDeclStmt = dynamic_cast<VarDeclStmt*>(stmt)) {
     emitVarDeclStmt(varDeclStmt);
   }
-  else if(const IfStmt* ifStmt = dynamic_cast<const IfStmt*>(stmt)) {
+  else if(IfStmt* ifStmt = dynamic_cast<IfStmt*>(stmt)) {
     emitIfStmt(ifStmt);
   }
-  else if(const WhileStmt* whileStmt = dynamic_cast<const WhileStmt*>(stmt)) {
+  else if(WhileStmt* whileStmt = dynamic_cast<WhileStmt*>(stmt)) {
     emitWhileStmt(whileStmt);
   }
-  else if(const ForStmt* forStmt = dynamic_cast<const ForStmt*>(stmt)) {
+  else if(ForStmt* forStmt = dynamic_cast<ForStmt*>(stmt)) {
     emitForStmt(forStmt);
   }
   else if(const SwitchStmt* switchStmt = dynamic_cast<const SwitchStmt*>(stmt)) {
@@ -239,7 +239,7 @@ void Emitter::emitStmt(const Stmt* stmt) {
   else if(const ReturnStmt* returnStmt = dynamic_cast<const ReturnStmt*>(stmt)) {
     emitReturnStmt(returnStmt);
   }
-  else if(const CompoundStmt* compoundStmt = dynamic_cast<const CompoundStmt*>(stmt)) {
+  else if(CompoundStmt* compoundStmt = dynamic_cast<CompoundStmt*>(stmt)) {
     emitCompoundStmt(compoundStmt);
   }
   else if(dynamic_cast<const NullStmt*>(stmt)) {
@@ -248,21 +248,22 @@ void Emitter::emitStmt(const Stmt* stmt) {
   return;
 }
 
-void Emitter::emitCompoundStmt(const CompoundStmt* cs) {
-  const std::vector<const Stmt*>& stmts = cs->getStmts();
-  for(const Stmt* stmt : stmts) {
+void Emitter::emitCompoundStmt(CompoundStmt* cs) {
+  const std::vector<Stmt*>& stmts = cs->getStmts();
+  for(Stmt* stmt : stmts) {
     emitStmt(stmt);
   }
   return;
 }
 
-void Emitter::emitVarDeclStmt(const VarDeclStmt* vds) {
+void Emitter::emitVarDeclStmt(VarDeclStmt* vds) {
   llvm::Type* type = findType(vds->getType()->getType()->getName());
-  const std::vector<const VarDecl*>& vars = vds->getVars();
+  const std::vector<VarDecl*>& vars = vds->getVars();
   llvm::StringMap<llvm::Value*>& scope = scopedValues.back();
-  for(const VarDecl* var : vars) {
+  for(VarDecl* var : vars) {
     // all vars are stack allocated right now
     llvm::Value* addr = builder.CreateAlloca(type, nullptr, *var->getName());
+    var->setValue(addr);
     scope.insert(std::pair<std::string, llvm::Value*>(*var->getName(), addr));
 
     // store the value of the init at the vars address
@@ -275,13 +276,13 @@ void Emitter::emitVarDeclStmt(const VarDeclStmt* vds) {
   return;
 }
 
-void Emitter::emitIfStmt(const IfStmt* is, llvm::BasicBlock* exit) {
+void Emitter::emitIfStmt(IfStmt* is, llvm::BasicBlock* exit) {
   llvm::Value* condition = emitExpr(is->getCondition());
   llvm::BasicBlock* endBlock = exit;
   llvm::BasicBlock* ifBlock = llvm::BasicBlock::Create(context, "if",
 						       functionStack.top());
   llvm::BasicBlock* elseBlock = nullptr;
-  const ElseStmt* es = is->getElse();
+  ElseStmt* es = is->getElse();
 
   if(!endBlock) {
     endBlock = llvm::BasicBlock::Create(context, "if_exit", functionStack.top());
@@ -306,14 +307,14 @@ void Emitter::emitIfStmt(const IfStmt* is, llvm::BasicBlock* exit) {
 
   // emit else body if there is one
   if(es) {
-    const Stmt* body = es->getBody();
+    Stmt* body = es->getBody();
     builder.SetInsertPoint(elseBlock);
-    if(!dynamic_cast<const IfStmt*>(body)) {
+    if(!dynamic_cast<IfStmt*>(body)) {
       emitStmt(es->getBody());
     }
     else {
       // We must make sure we leave to this if's exit block
-      emitIfStmt(dynamic_cast<const IfStmt*>(body), endBlock);
+      emitIfStmt(dynamic_cast<IfStmt*>(body), endBlock);
     }
     if(!elseBlock->back().isTerminator()) {
       // block not properly ended
@@ -325,7 +326,7 @@ void Emitter::emitIfStmt(const IfStmt* is, llvm::BasicBlock* exit) {
   return;
 }
 
-void Emitter::emitWhileStmt(const WhileStmt* ws) {
+void Emitter::emitWhileStmt(WhileStmt* ws) {
   llvm::BasicBlock* endBlock = llvm::BasicBlock::Create(context, "while_exit",
 							functionStack.top());
   llvm::BasicBlock* condBlock = llvm::BasicBlock::Create(context, "while_cond",
@@ -354,7 +355,7 @@ void Emitter::emitWhileStmt(const WhileStmt* ws) {
   return;
 }
 
-void Emitter::emitForStmt(const ForStmt* fs) {
+void Emitter::emitForStmt(ForStmt* fs) {
   llvm::BasicBlock* initBlock = llvm::BasicBlock::Create(context, "for_init",
 							 functionStack.top());
   llvm::BasicBlock* condBlock = llvm::BasicBlock::Create(context, "for_cond",
