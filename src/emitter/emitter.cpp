@@ -128,6 +128,18 @@ void Emitter::emitFunctionDec(const FunctionDecl* fd) {
   return;
 }
 
+void Emitter::emitVarDecl(VarDecl* vd) {
+  llvm::Type* type = findType(vd->getType()->getType()->getName());
+  llvm::Value* addr = builder.CreateAlloca(type, nullptr, *vd->getName());
+  vd->setValue(addr);
+
+  // store the value of the init at the vars address
+  if (const Expr* init = vd->getInit()) {
+    llvm::Value* initVal = emitExpr(init);
+    builder.CreateStore(castType(initVal, addr->getType()->getPointerElementType()), addr);
+  }
+}
+
 void Emitter::emitFunctionDef(FunctionDecl* fd) {
   llvm::Function* f = module->getFunction(*fd->getName());
   functionStack.push(f);
@@ -257,20 +269,9 @@ void Emitter::emitCompoundStmt(CompoundStmt* cs) {
 }
 
 void Emitter::emitVarDeclStmt(VarDeclStmt* vds) {
-  llvm::Type* type = findType(vds->getType()->getType()->getName());
   const std::vector<VarDecl*>& vars = vds->getVars();
-  llvm::StringMap<llvm::Value*>& scope = scopedValues.back();
   for(VarDecl* var : vars) {
-    // all vars are stack allocated right now
-    llvm::Value* addr = builder.CreateAlloca(type, nullptr, *var->getName());
-    var->setValue(addr);
-    scope.insert(std::pair<std::string, llvm::Value*>(*var->getName(), addr));
-
-    // store the value of the init at the vars address
-    if(const Expr* init = var->getInit()) {
-      llvm::Value* initVal = emitExpr(init);
-      builder.CreateStore(castType(initVal, addr->getType()->getPointerElementType()), addr);
-    }
+    emitVarDecl(var);
   }
 
   return;
@@ -602,16 +603,12 @@ llvm::Value* Emitter::emitFunctionCallExpr(const FunctionCallExpr* fce) {
 }
 
 llvm::Value* Emitter::emitVarInstanceExpr(const VarInstanceExpr* vie) {
-  std::vector<llvm::StringMap<llvm::Value*>>::reverse_iterator cur = scopedValues.rbegin();
-  std::vector<llvm::StringMap<llvm::Value*>>::reverse_iterator end = scopedValues.rend();
-  while(cur != end) {
-    llvm::StringMap<llvm::Value*>::iterator e = cur->find(*vie->getName());
-    if(e != cur->end()) {
-      return e->getValue();
-    }
+  llvm::Value* val = vie->getVar()->getValue();
+  if (!val) {
+    fatalError("Used undefined value while emitting"
+               " variable instance expression");
   }
-  // find in globals
-  fatalError("Variable not found in scope in emitter");
+  return val;
 }
 
 llvm::Value* Emitter::emitLiteralExpr(const LiteralExpr* le) {
