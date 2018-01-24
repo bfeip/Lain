@@ -148,19 +148,18 @@ void Emitter::emitFunctionDef(FunctionDecl* fd) {
   llvm::BasicBlock* bb = llvm::BasicBlock::Create(context, "entry", f);
   builder.SetInsertPoint(bb);
   int i = 0;
-  const std::vector<VarDecl*> lainParams = fd->getParams();
+  const std::vector<VarDecl*>& lainParams = fd->getParams();
   for(auto& arg : f->args()) {
     arg.setName(*lainParams[i++]->getName());
   }
 
-  scopedValues.emplace_back();
-  llvm::StringMap<llvm::Value*>& scope = scopedValues.back();
-  for(auto& arg : f->args()) {
-    scope[arg.getName()] = &arg;
+  int i = 0;
+  for(llvm::Argument& llvmArg : f->args()) {
+    lainParams[i]->setValue(&llvmArg);
+    i++;
   }
 
   emitCompoundStmt(fd->getBody()); // emit function body
-  scopedValues.pop_back(); // remove params
   functionStack.pop();
   llvm::verifyFunction(*f);
 
@@ -208,15 +207,13 @@ void Emitter::emitMethod(FunctionDecl* fd, llvm::StructType* self) {
     arg->setName(*lainParams[i]->getName());
   }
 
-  // add params to scoped values
-  scopedValues.emplace_back();
-  llvm::StringMap<llvm::Value*>& scope = scopedValues.back();
-  for(auto& arg : f->args()) {
-    scope[arg.getName()] = &arg;
+  int i = 0;
+  for (llvm::Argument& llvmArg : f->args()) {
+    lainParams[i]->setValue(&llvmArg);
+    i++;
   }
 
   emitCompoundStmt(fd->getBody()); // emit function body
-  scopedValues.pop_back(); // remove params from scoped values
   functionStack.pop();
   llvm::verifyFunction(*f);
 

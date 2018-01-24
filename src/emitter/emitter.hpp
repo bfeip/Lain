@@ -24,7 +24,6 @@ private:
   std::stack<llvm::BasicBlock*> continueTo;
 
   std::vector<std::unique_ptr<llvm::GlobalVariable>> globalVars;
-  std::vector<llvm::StringMap<llvm::Value*>> scopedValues;
 
   std::vector<llvm::Instruction*> delayedInstructions;
   
@@ -37,6 +36,7 @@ private:
   void emitClass(ClassDecl* cd);
   //void emitEnum(const EnumDecl* ed); TODO
   void emitFunctionDec(const FunctionDecl* fd);
+  void emitVarDecl(VarDecl* vd);
   void emitFunctionDef(FunctionDecl* fd);
   void emitMethod(FunctionDecl* fd, llvm::StructType* self);
 
@@ -59,8 +59,6 @@ private:
   llvm::Value* emitLiteralExpr(const LiteralExpr* le);
   
   llvm::Value* emitAssign(llvm::Value* ptr, llvm::Value* val);
-
-  void stringCpy(llvm::Value* to, llvm::Value* from);
 
   llvm::Value* removeRefs(llvm::Value* val);
   
